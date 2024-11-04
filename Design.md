@@ -49,17 +49,7 @@ A 2D puzzle platformer where the player only starts with the ability to move in 
   - **Pause**: Accessible during gameplay with options to resume, adjust settings, or return to the main menu.
   - **Settings**: Allows adjustment of sound, music, and control preferences.
 
-## Aesthetics
-- **Level Layout**: Vertical and side-scrolling. The camera zoom and player centering are left to the programmer's discretion.
-- **Themes**: Each level should have a different environmental theme, with varying floor colors and pixel art backgrounds.
-  - **Examples**:
-    - [Image 1 - GitHub URL](#)
-    - [Image 2 - GitHub URL](#)
-    - [Image 3 - GitHub URL](#)
-    - [Image 4 - GitHub URL](#)
-    - [Image 5 - GitHub URL](#)
-
-### Puzzle and Platforming Mechanics:
+## Puzzle and Platforming Mechanics:
 - **Shooter**: Periodically shoots projectiles until they hit a wall or the player (respawn at checkpoint upon contact).
 - **Spring**: Launches the player into the air upon stepping on it.
 - **Cage**: Disappears when triggered (e.g., pressure plate or enemy defeat).
@@ -71,6 +61,16 @@ A 2D puzzle platformer where the player only starts with the ability to move in 
 - **Breakable Wall**: Breaks if the player dashes into it.
 - **Special Key**: Starts a timer—removes a cage for a set time, then restores it. Timer duration is adjustable.
 - **Star**: Completes the level when collected.
+
+## Aesthetics
+- **Level Layout**: Vertical and side-scrolling. The camera zoom and player centering are left to the programmer's discretion.
+- **Themes**: Each level should have a different environmental theme, with varying floor colors and pixel art backgrounds.
+  - **Examples**:
+    - ![]()
+    - ![]()
+    - ![]()
+    - ![]()
+    - ![]()
 
 ## Levels
 - **Yellow Circle**: Player spawn point.
