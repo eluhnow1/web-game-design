@@ -4,8 +4,6 @@ A 2D puzzle platformer where the player only starts with the ability to move in 
 ## Game Title:
 - **“Out of Control”** 
 
-<!--Maybe "Out of Control" ?  -matthew -->
-
 
 ## 2. Purpose of the Game
 - **Goal**: Provide a challenging but unique puzzle experience where the player controls a character in a 2D puzzle platformer. The player starts with only the ability to move in one direction, and the goal is to collect all the controls and reach the end of the stage.
