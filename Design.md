@@ -79,4 +79,4 @@ A 2D puzzle platformer where the player only starts with the ability to move in 
 - **Yellow Circle**: Player spawn point.
 - **Black Rectangles**: Placeholder for tiles from the tileset.
 - **Level 1**: Order of pickups: left, crouch, jump, dash, double jump, wall jump.
-  - [](https://github.com/mcommons33/Edwins-web-game-design/blob/main/assets/levels/level1.png)
+  - ![](https://github.com/mcommons33/Edwins-web-game-design/blob/main/assets/levels/level1.png)
