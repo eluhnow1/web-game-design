@@ -23,13 +23,10 @@ A 2D puzzle platformer where the player only starts with the ability to move in 
 - **Start Screen**:
   - **Buttons**: Start Game, Instructions
   - **Instructions**: Overview of controls, game mechanics, and objectives.
-    <!--Maybe the background of the starting screen could be more detailed, maybe a scrolling map that shifts between levels without a character or smth like that.-->
-    <!--Edwin's response: nahhhhhhh-->
+
 - **Gameplay**:
   - **Objective**: Navigate the level, solve puzzles and platforming challenges, collect movement pickups, and explore newly accessible areas.
   - **Progression**: Each collected ability opens access to new paths and puzzles.
-  <!--Maybe add some kind of currency that you can also collect, whether it be stars per level, and its rly hard to get the 3rd star for each level given the controls, or maybe coins that are scarce that can unlock skins or maybe even bonus controls or movement features like a jetpack or smth; but also limit that feature bc that could get OP pretty easily; just a thought to try to make there be an optional goal for perfection or smth; iguess you kinda added the bonus abilities with the endgame but maybe still cosmetic coins or smth-->
-  <!--Edwin's response: yes this is good-->
   -**Coins**: Add coins throughout the level, and there will be a shop in the main menu where cosmetics can be bought. (I will add in the coins and cosmetics at a later time)
 - **Ability Unlock Sequence**: Each new ability includes a mini-tutorial popup or hint showing how to use it.
 - **Game Over Screen**:
@@ -69,8 +66,6 @@ A 2D puzzle platformer where the player only starts with the ability to move in 
 - **Special Key**: Starts a timer—removes a cage for a set time, then restores it. Timer duration is adjustable.
 - **Star**: Completes the level when collected.
 
-<!-- Maybe add a coop mode where you can play with another person online to complete portentially more challenging levels. the controls could be items with an option to drop them to your parter. so if say you need jump but your partner needs dash you could exchange control items so you could both complete your respective tasks. also levels should include a necesity of cooperation, such that maybe one person needs to hold a lever and another person complete a task with the complication of limited movement. In coop mode, levels should progress automatically so it removes the need for both players to exit to level menue and have to re-host the next level. -->
-<!--Edwin's response: I intended this game to be singleplayer and I would like it to stay that way, so nahhhhhh-->
 
 ## Aesthetics
 - **Level Layout**: Vertical and side-scrolling. The camera zoom and player centering are left to the programmer's discretion.
