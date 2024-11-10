@@ -97,6 +97,7 @@ The game architecture is composed of several key classes and systems, each respo
   - `updateAbilities(newAbility: String)`: Unlocks a new ability when the player collects a pickup.
   - `respawn()`: Respawns the player at the last checkpoint or the starting point.
 
+
 ---
 
 ### 2.4 **InputHandler Class**
@@ -110,7 +111,7 @@ The game architecture is composed of several key classes and systems, each respo
   - `handleKeyRelease(event: KeyEvent)`: Handles key releases and updates the player state.
   - `handleControllerInput(event: ControllerEvent)`: Processes controller input for movement, jumping, etc.
 
----
+--- -> https://www.figma.com/board/SoJsSq7DXtvtVSMB8vQPK7/OutOfControl?node-id=0-1&t=DSs8YRXJgwDoF5vw-1
 
 ## 3. **Game Objects**
 
