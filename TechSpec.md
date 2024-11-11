@@ -6,10 +6,8 @@
  - HTML5: Structure of the game canvas and DOM elements.
  - CSS3: Styling the user interface elements like menus, HUD, and pause screens.
 
-## (**CHOOSE ONE OR THE OTHER**) Frameworks & Game Engines
+## Frameworks & Game Engines
  - Phaser 3: A fast, easy-to-use HTML5 game framework for building 2D games with extensive support for physics, animations, and input controls.
- - PixiJS: A fast 2D rendering engine, ideal for handling the game's graphical elements and performance across various devices.
-
 
 ## Development Tools
  - Tiled: A level design tool that allows creating tile-based maps, which can be easily imported into the game engine.
@@ -22,192 +20,169 @@
 # *Game Architecture*
 
 Structure
- - Main Game Loop: Managed using Phaser's built-in game loop, handling input, physics, and rendering.
-State Management: Use Phaser's state management system to handle different game states (menu, in-game, pause, level completion).
-Level Design: Levels designed in Tiled or directly in Phaser’s map editor, using tilemaps for platform placements and object collision definitions.
+ - The structure of the game is built around Phaser.js for rendering and input, while Matter.js handles all physics and collisions. The core components include the GameManager for controlling the game flow, the Player class to represent the main character with physics-based movement and abilities, and the Level class that manages the environment, including tiles, hazards, and pickups. Additional classes, like UIManager, handle the user interface and sound. The architecture simplifies movement and interaction by leveraging Phaser’s input system and Matter.js’s physics engine for tasks like gravity and collisions.
 
 Game Logic
- - Ability Unlock System: A key component managing player progress through ability unlocks.
-Collision Detection: Leveraging Phaser and Matter.js physics to detect player interactions with objects and hazards.
-Backtracking System: Implements a way for the player to revisit previously inaccessible areas once new abilities are acquired.
+ - The game logic centers around player movement and environmental interaction. The player can move using arrow keys, jump with the spacebar, and dash using a designated key. Levels are structured with platforms, hazards, and pickups that the player interacts with as they progress. Matter.js handles collisions between the player and level elements, like falling off platforms or hitting hazards, while Phaser’s scene management transitions between game states (e.g., paused, game over). The game loop continuously updates the player’s position, velocity, and interactions within the environment.
 
 ## *Classes, Objects, Variables,*
 
-## 1. **Core Components**
+# Game Architecture for "Out of Control" (Phaser.js + Matter.js)
 
-The game architecture is composed of several key classes and systems, each responsible for different aspects of the game. The structure follows a **Model-View-Controller (MVC)** pattern to keep game logic, rendering, and player input separate and maintainable.
+## 1. Core Components
 
-## 2. **Main Game Components**
-
-### 2.1 **GameManager Class**
-**Responsibilities**: Handles the overall flow and state of the game. Manages initialization, transitions between levels, and the main game loop.
+### 1.1 GameManager Class (Phaser.Scene)
+**Responsibilities**: Manages game flow, scenes, and transitions between levels using Phaser’s scene management.
 
 - **Attributes**:
-  - `currentLevel`: (Level) The current level object being played.
-  - `gameState`: (String) States like "menu", "playing", "paused", or "gameover".
-  - `player`: (Player) Reference to the player object.
-  - `UIManager`: (UIManager) Manages the UI elements like HUD and pause menus.
-  - `inputHandler`: (InputHandler) Handles player inputs and sends them to relevant objects.
-  
+  - `currentLevel`: (Level) The active level being played.
+  - `player`: (Player) The player object.
+  - `UIManager`: (UIManager) Manages the game’s UI and sound.
+  - `gameState`: (String) "menu", "playing", "paused", "gameover".
+
 - **Methods**:
-  - `startGame()`: Initializes the game and loads the first level.
-  - `loadLevel(levelId: String)`: Loads a new level based on the level ID.
-  - `pauseGame()`: Pauses the game and shows the pause menu.
-  - `resumeGame()`: Resumes the game from the paused state.
-  - `endGame()`: Ends the game and shows the game over screen.
-  - `update()`: The main game loop that updates game states, checks for win/loss conditions, and manages level transitions.
+  - `startGame()`: Loads the first level and begins the game.
+  - `loadLevel(levelId: String)`: Loads the specific level using the scene management system.
+  - `pauseGame()`: Pauses the game and brings up the pause menu.
+  - `resumeGame()`: Resumes gameplay.
+  - `endGame()`: Ends the game and triggers the game over screen.
+  - `update(time, delta)`: The main game loop, called by Phaser on every frame. Updates game objects and manages state transitions.
 
 ---
 
-### 2.2 **Level Class**
-**Responsibilities**: Represents the individual game levels, including all elements like platforms, hazards, and pickups.
+## 2. Player Class (Phaser.GameObjects.Sprite with Matter.js physics)
+**Responsibilities**: Represents the player character, including movement and interaction with abilities. Uses Matter.js for physics.
 
 - **Attributes**:
-  - `tileset`: (Array of Tiles) The layout of the level’s tiles (platforms, walls, hazards).
-  - `pickups`: (Array of Pickup) Array of pickups like movement abilities.
-  - `hazards`: (Array of Hazard) Array of level hazards (e.g., sawblades, crumbling platforms).
-  - `enemies`: (Array of Enemy) Optional enemies that create additional challenges.
-  - `playerSpawnPoint`: (Coordinate) Where the player starts in the level.
-  - `exit`: (Coordinate) The exit point the player must reach to finish the level.
-
-- **Methods**:
-  - `loadLevel(levelData: Object)`: Initializes the level using level data (tileset, pickups, etc.).
-  - `checkForCompletion()`: Checks if the player has reached the level’s exit.
-  - `resetLevel()`: Resets the level if the player dies or respawns at a checkpoint.
-  
----
-
-### 2.3 **Player Class**
-**Responsibilities**: Manages the player character’s attributes, movement, and ability progression.
-
-- **Attributes**:
-  - `position`: (Coordinate) The player’s current position in the game world.
-  - `velocity`: (Vector) Tracks the player's movement speed and direction.
-  - `abilities`: (Array of String) The list of unlocked abilities (e.g., “move left”, “jump”, “dash”).
-  - `currentHealth`: (int) The player’s health, reduced when hit by hazards or enemies.
+  - `sprite`: (Phaser.GameObjects.Sprite) The visual representation of the player, with Matter.js physics body attached.
+  - `abilities`: (Array of String) Unlocked abilities (e.g., dash).
+  - `currentHealth`: (int) Player's health.
   - `isAlive`: (boolean) Whether the player is alive or dead.
-  
+  - `currentAnimation`: (String) The currently active animation (e.g., 'idle', 'run', 'jump').
+  - `anims`: (Phaser.Animations.AnimationManager) Animation manager responsible for playing animations.
 - **Methods**:
-  - `move(direction: String)`: Moves the player based on input (e.g., "left", "right").
-  - `jump()`: Makes the player jump if the ability is unlocked.
-  - `dash()`: Dashes in the direction the player is moving if the ability is unlocked.
-  - `crouch()`: Crouches the player if the ability is unlocked.
-  - `doubleJump()`: Allows for a second jump in the air if the ability is unlocked.
-  - `wallJump()`: Executes a wall jump if the player is near a wall and has unlocked the ability.
-  - `updateAbilities(newAbility: String)`: Unlocks a new ability when the player collects a pickup.
-  - `respawn()`: Respawns the player at the last checkpoint or the starting point.
 
+  - `unlockAbility(newAbility: String)`: Adds a new ability (e.g., dash) to the player’s capabilities.
+  - `respawn()`: Moves the player to a respawn point if they die.
+  - `playAnimation(animationKey: String)`: Plays the specified animation for the player sprite.
+  - `moveLeft()`: Applies leftward velocity and triggers the run-left animation.
+  - `moveRight()`: Applies rightward velocity and triggers the run-right animation.
+  - `jump()`: Applies vertical velocity and triggers the jump animation.
+  - `update()`: Updates the player’s state each frame, including animation changes.
+  - `crouch()`: Changes the player’s sprite using the crouchwalk png's
+  - `dash()`: Extra veloctity applied in the direction you are facing. Triggers the dash animaiton
+
+**Note on Input**: Phaser handles input using its built-in event system (`this.input.keyboard.on()`), directly modifying the player's velocity and state within this class.
 
 ---
 
-### 2.4 **InputHandler Class**
-**Responsibilities**: Handles all input events (keyboard, mouse, controller) and translates them into in-game actions.
+## 3. Level Class (Phaser.Tilemaps.Tilemap with Matter.js physics)
+**Responsibilities**: Represents an individual level, including tiles, hazards, and pickups. Uses Phaser’s Tilemap system and Matter.js physics for interaction and collision.
 
 - **Attributes**:
-  - `currentInputs`: (Object) Stores the current key/button presses.
-  
+  - `tilemap`: (Phaser.Tilemaps.Tilemap) The layout of the level, with tiles.
+  - `pickups`: (Array of Pickup) Collectibles in the level that grant new abilities.
+  - `hazards`: (Array of Hazard) Harmful elements in the level.
+  - `exit`: (Phaser.GameObjects.Sprite) The level exit goal for the player.
+
 - **Methods**:
-  - `handleKeyPress(event: KeyEvent)`: Processes key presses and forwards them to the player.
-  - `handleKeyRelease(event: KeyEvent)`: Handles key releases and updates the player state.
-  - `handleControllerInput(event: ControllerEvent)`: Processes controller input for movement, jumping, etc.
-
---- -> https://www.figma.com/board/SoJsSq7DXtvtVSMB8vQPK7/OutOfControl?node-id=0-1&t=DSs8YRXJgwDoF5vw-1
-
-## 3. **Game Objects**
-
-### 3.1 **Tile Class**
-**Responsibilities**: Represents individual tiles that form the environment (e.g., floors, walls, platforms).
-
-- **Attributes**:
-  - `position`: (Coordinate) Position of the tile on the game map.
-  - `type`: (String) Type of tile (e.g., platform, wall, crumbling platform).
-  - `isSolid`: (boolean) Whether the tile is solid (affects collision).
-  
-- **Methods**:
-  - `render()`: Draws the tile on the screen.
-  - `onPlayerContact()`: Executes any special logic when the player interacts with the tile (e.g., a crumbling platform breaking).
+  - `loadLevel(levelData: Object)`: Loads the level, including tilemap, pickups, hazards, and exits.
+  - `checkForCompletion()`: Detects if the player has reached the exit point.
+  - `resetLevel()`: Resets the level upon player death.
 
 ---
 
-### 3.2 **Pickup Class**
-**Responsibilities**: Represents the pickups that grant the player new abilities.
+## 4. Game Objects
+
+### 4.1 Tile Class (Phaser.Tilemaps.TilemapLayer with Matter.js)
+**Responsibilities**: Represents individual tiles or platforms in the environment. Uses Matter.js for collision detection and interaction with the player.
 
 - **Attributes**:
-  - `type`: (String) The type of ability that the pickup unlocks (e.g., “jump”, “dash”).
-  - `position`: (Coordinate) Where the pickup is located on the map.
-  
-- **Methods**:
-  - `collect()`: Grants the corresponding ability to the player when collected.
-  
----
+  - `position`: (Coordinate) The tile’s position in the world.
+  - `type`: (String) The type of tile (e.g., platform, hazard).
+  - `isSolid`: (boolean) Whether the tile is solid and can block player movement.
 
-### 3.3 **Hazard Class**
-**Responsibilities**: Represents obstacles that harm the player, like sawblades or spikes.
-
-- **Attributes**:
-  - `position`: (Coordinate) Position of the hazard on the map.
-  - `damage`: (int) The amount of damage inflicted on the player.
-  
 - **Methods**:
-  - `onPlayerContact()`: Reduces player health or triggers death when the player touches the hazard.
+  - `onPlayerContact()`: Handles what happens when the player contacts the tile (e.g., stand on platform or hit a hazard).
 
 ---
 
-### 3.4 **MovingPlatform Class**
-**Responsibilities**: Represents platforms that move between fixed points.
+### 4.2 Pickup Class (Phaser.GameObjects.Sprite with Matter.js)
+**Responsibilities**: Represents a collectible that grants the player new abilities (e.g., dashing or double-jump).
 
 - **Attributes**:
-  - `path`: (Array of Coordinate) The path the platform follows.
-  - `speed`: (float) How fast the platform moves.
-  
+  - `type`: (String) The type of ability granted by the pickup.
+  - `position`: (Coordinate) The pickup's location in the world.
+
 - **Methods**:
-  - `move()`: Moves the platform along its path.
-  - `checkForPlayer()`: Detects if the player is standing on the platform and moves the player with it.
+  - `collect()`: When the player collides with the pickup, the ability is unlocked, and the pickup is removed from the scene.
 
 ---
 
-## 4. **UI Components**
-
-### 4.1 **UIManager Class**
-**Responsibilities**: Handles all user interface elements like HUD, pause menus, and settings.
+### 4.3 Hazard Class (Phaser.GameObjects.Sprite with Matter.js)
+**Responsibilities**: Represents harmful objects, such as spikes, fire, or moving hazards, that can damage or kill the player.
 
 - **Attributes**:
-  - `HUD`: (Object) Displays player health, unlocked abilities, and progress through the level.
-  - `pauseMenu`: (Object) Displays the pause menu with options for settings or exiting the game.
-  
+  - `position`: (Coordinate) The hazard’s position.
+  - `damage`: (int) Amount of damage done to the player on contact.
+
 - **Methods**:
-  - `renderHUD()`: Updates and displays the player's health, abilities, and progress bar.
-  - `showPauseMenu()`: Displays the pause menu.
-  - `showSettingsMenu()`: Displays settings like sound control, music, and input preferences.
+  - `onPlayerContact()`: Reduces the player's health or kills them if they contact the hazard.
 
 ---
 
-## 5. **Physics and Collision Detection**
-
-### 5.1 **PhysicsEngine Class**
-**Responsibilities**: Handles the physical interactions between the player, environment, and objects.
+### 4.4 MovingPlatform Class (Phaser.GameObjects.Sprite with Matter.js)
+**Responsibilities**: Represents platforms that move along a fixed path using Matter.js physics. Can carry the player if they stand on it.
 
 - **Attributes**:
-  - `gravity`: (float) The gravity affecting the player and objects.
-  - `collisionObjects`: (Array) List of objects that the player can collide with.
-  
+  - `path`: (Array of Coordinates) The path the platform follows.
+  - `speed`: (float) Speed of platform movement.
+
 - **Methods**:
-  - `applyGravity(object: GameObject)`: Applies gravity to the player and movable objects.
-  - `checkCollisions(object: GameObject)`: Detects collisions between objects (e.g., player and platforms, hazards, pickups).
-  - `resolveCollisions()`: Resolves what happens when the player collides with solid objects, hazards, or enemies.
+  - `move()`: Moves the platform along its predefined path.
+  - `checkForPlayer()`: Detects if the player is standing on the platform and moves them with it.
 
 ---
 
-## 6. **Sound and Music**
+## 5. UI and Sound Management
 
-### 6.1 **SoundManager Class**
-**Responsibilities**: Manages background music and sound effects in the game.
+### 5.1 UIManager Class
+**Responsibilities**: Manages the heads-up display (HUD), menus, and sound settings (music, sound effects) within the game.
 
 - **Attributes**:
-  - `musicVolume`: (float) Current volume level of the background music.
-  - `soundEffectsVolume`: (float) Volume level of sound effects.
-  
+  - `HUD`: (Object) Displays player health, abilities, and progress.
+  - `pauseMenu`: (Object) The in-game pause menu.
+  - `musicVolume`: (float) The background music volume level.
+  - `soundEffectsVolume`: (float) The sound effects volume level.
+
 - **Methods**:
-  - `playMusic(track: String)`: Plays a specific music track for a level or menu.
-  - `playSoundEffect(effect: String)`: Plays a specific sound effect (e.g., jump, dash, pickup).
-  - `adjustVolume(volume: float)`: Adjusts the overall sound or music volume.
+  - `renderHUD()`: Displays player health, unlocked abilities, and level progress.
+  - `showPauseMenu()`: Brings up the pause menu.
+  - `playMusic(track: String)`: Plays background music using Phaser’s audio system.
+  - `playSoundEffect(effect: String)`: Plays sound effects (e.g., jump, dash, collect pickup).
+  - `adjustMusicVolume(volume: float)`: Adjusts music volume.
+  - `adjustSoundEffectsVolume(volume: float)`: Adjusts sound effects volume.
+
+---
+
+## 6. Physics and Collision Detection (Handled by Matter.js)
+
+Matter.js is integrated into Phaser to handle all physics and collisions automatically, including gravity, velocity, and object interaction.
+
+- **Gravity**: Global gravity is set using Matter.js, typically applying downward force to the player and other objects.
+  
+- **Collisions**: Matter.js handles collisions between the player and the environment (tiles, platforms), as well as hazards and pickups. Collisions are automatically detected, and custom logic is defined in methods like `onPlayerContact()`.
+
+- **Velocity**: Player velocity is controlled using Matter.js physics, applying forces and setting velocities directly on the player's Matter.js body.
+
+---
+
+## 7. Input Handling (Phaser Input System)
+
+Phaser’s built-in input system is used to manage all player inputs, such as moving, jumping, and dashing:
+
+- **Arrow Keys**: Left and right arrow keys move the player horizontally.
+- **Spacebar**: Spacebar makes the player jump.
+- **Dash Key**: A designated key (e.g., Shift) triggers the dash ability.
+
+Input handling is directly tied to the player’s physics, modifying velocity or triggering actions within the player’s methods.
