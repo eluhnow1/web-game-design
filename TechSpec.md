@@ -50,7 +50,8 @@ Game Logic
 
 ---
 
-## 2. Player Class (Phaser.GameObjects.Sprite with Matter.js physics)
+## 2. Player Class (Phaser.GameObjects.Sprite with Matter.js physics) 
+### *https://docs.phaser.io/phaser/concepts/physics/matter*
 **Responsibilities**: Represents the player character, including movement and interaction with abilities. Uses Matter.js for physics.
 
 - **Attributes**:
