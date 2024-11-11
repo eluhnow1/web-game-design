@@ -27,6 +27,8 @@ Game Logic
 
 ## *Classes, Objects, Variables,*
 
+## Read the Architecture, then look at the figma at the bottom.
+
 # Game Architecture for "Out of Control" (Phaser.js + Matter.js)
 
 ## 1. Core Components
@@ -187,3 +189,6 @@ Phaser’s built-in input system is used to manage all player inputs, such as mo
 - **Dash Key**: A designated key (e.g., Shift) triggers the dash ability.
 
 Input handling is directly tied to the player’s physics, modifying velocity or triggering actions within the player’s methods.
+
+# FIGMA 
+https://www.figma.com/board/SoJsSq7DXtvtVSMB8vQPK7/OutOfControl?node-id=0-1&node-type=canvas&t=guqSOafY6HJ0ajg3-0
