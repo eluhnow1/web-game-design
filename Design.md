@@ -21,10 +21,6 @@ A 2D puzzle platformer where the player only starts with the ability to move in 
 - **Start Screen**:
   - **Buttons**: Start Game, Instructions
   - **Instructions**: Overview of controls, game mechanics, and objectives.
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
 - **Gameplay**:
   - **Objective**: Navigate the level, solve puzzles and platforming challenges, collect movement pickups, and explore newly accessible areas.
   - **Progression**: Each collected ability opens access to new paths and puzzles.
@@ -67,10 +63,6 @@ A 2D puzzle platformer where the player only starts with the ability to move in 
 - **Special Key**: Starts a timer—removes a cage for a set time, then restores it. Timer duration is adjustable.
 - **Star**: Completes the level when collected.
 
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
 ## Aesthetics
 - **Level Layout**: Vertical and side-scrolling. The camera zoom and player centering are left to the programmer's discretion.
 - **Themes**: Each level should have a different environmental theme, with varying floor colors and pixel art backgrounds.
