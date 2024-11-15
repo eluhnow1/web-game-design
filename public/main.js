@@ -70,14 +70,35 @@ function create() {
             backgroundGroup.add(this.add.image(x, y, 'grid').setOrigin(0, 0));
         }
     }
+
+    // Create world boundaries as static Matter.js bodies
+    const wallThickness = 60;
     
-    player = this.matter.add.sprite(400, 300, 'player', null, {
+    // Left wall
+    this.matter.add.rectangle(0, WORLD_HEIGHT/2, wallThickness, WORLD_HEIGHT, {
+        isStatic: true,
+        label: 'wall'
+    });
+
+    // Right wall
+    this.matter.add.rectangle(WORLD_WIDTH, WORLD_HEIGHT/2, wallThickness, WORLD_HEIGHT, {
+        isStatic: true,
+        label: 'wall'
+    });
+
+    // Bottom wall
+    this.matter.add.rectangle(WORLD_WIDTH/2, WORLD_HEIGHT, WORLD_WIDTH, wallThickness, {
+        isStatic: true,
+        label: 'wall'
+    });
+    
+    // Create player with proper collision body
+    player = this.matter.add.sprite(400, 100, 'player', null, {
         friction: 0.05,
         restitution: 0,
         density: 0.001,
         label: 'player',
-        chamfer: { radius: 4 },  // Round the corners slightly
-        // Define a rectangular physics body that matches the sprite size
+        chamfer: { radius: 4 },
         shape: {
             type: 'rectangle',
             width: PLAYER_SIZE,
@@ -90,7 +111,6 @@ function create() {
 
     // Set up camera
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-    // Increase lerp (smoothing) values for smoother camera
     this.cameras.main.startFollow(player, true, 0.2, 0.2);
     this.cameras.main.setZoom(2);
     
