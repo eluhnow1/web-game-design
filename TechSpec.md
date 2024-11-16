@@ -1,39 +1,47 @@
-# Technical Requirements
+# Technical Specification
 
-## Programming Languages
- - JavaScript: Core language for game mechanics, logic, and dynamic behaviors.
- - TypeScript (optional): Adds static typing to enhance maintainability and reduce runtime errors.
- - HTML5: Structure of the game canvas and DOM elements.
- - CSS3: Styling the user interface elements like menus, HUD, and pause screens.
+## Technical Requirements
 
-## Frameworks & Game Engines
- - Phaser 3: A fast, easy-to-use HTML5 game framework for building 2D games with extensive support for physics, animations, and input controls.
+### Programming Languages
 
-## Development Tools
- - Tiled: A level design tool that allows creating tile-based maps, which can be easily imported into the game engine.
- - Node.js & npm: Useful for setting up a development environment, running build tools, and managing project dependencies.
+- JavaScript: Core language for game mechanics, logic, and dynamic behaviors.
+- TypeScript (optional): Adds static typing to enhance maintainability and reduce runtime errors.
+- HTML5: Structure of the game canvas and DOM elements.
+- CSS3: Styling the user interface elements like menus, HUD, and pause screens.
 
-## Physics Engine
- - Matter.js: A powerful physics engine integrated with Phaser for handling object collisions, platformer mechanics (e.g., jumping, dashing), and environmental interactions (e.g., moving platforms, spring mechanics).
+### Frameworks & Game Engines
 
+- Phaser 3: A fast, easy-to-use HTML5 game framework for building 2D games with extensive support for physics, animations, and input controls.
 
-# *Game Architecture*
+### Development Tools
+
+- Tiled: A level design tool that allows creating tile-based maps, which can be easily imported into the game engine.
+- Node.js & npm: Useful for setting up a development environment, running build tools, and managing project dependencies.
+
+### Physics Engine
+
+- Matter.js: A powerful physics engine integrated with Phaser for handling object collisions, platformer mechanics (e.g., jumping, dashing), and environmental interactions (e.g., moving platforms, spring mechanics).
+
+## *Game Architecture*
 
 Structure
- - The structure of the game is built around Phaser.js for rendering and input, while Matter.js handles all physics and collisions. The core components include the GameManager for controlling the game flow, the Player class to represent the main character with physics-based movement and abilities, and the Level class that manages the environment, including tiles, hazards, and pickups. Additional classes, like UIManager, handle the user interface and sound. The architecture simplifies movement and interaction by leveraging Phaser’s input system and Matter.js’s physics engine for tasks like gravity and collisions.
+
+- The structure of the game is built around Phaser.js for rendering and input, while Matter.js handles all physics and collisions. The core components include the GameManager for controlling the game flow, the Player class to represent the main character with physics-based movement and abilities, and the Level class that manages the environment, including tiles, hazards, and pickups. Additional classes, like UIManager, handle the user interface and sound. The architecture simplifies movement and interaction by leveraging Phaser’s input system and Matter.js’s physics engine for tasks like gravity and collisions.
 
 Game Logic
- - The game logic centers around player movement and environmental interaction. The player can move using arrow keys, jump with the spacebar, and dash using a designated key. Levels are structured with platforms, hazards, and pickups that the player interacts with as they progress. Matter.js handles collisions between the player and level elements, like falling off platforms or hitting hazards, while Phaser’s scene management transitions between game states (e.g., paused, game over). The game loop continuously updates the player’s position, velocity, and interactions within the environment.
 
-## *Classes, Objects, Variables,*
+- The game logic centers around player movement and environmental interaction. The player can move using arrow keys, jump with the spacebar, and dash using a designated key. Levels are structured with platforms, hazards, and pickups that the player interacts with as they progress. Matter.js handles collisions between the player and level elements, like falling off platforms or hitting hazards, while Phaser’s scene management transitions between game states (e.g., paused, game over). The game loop continuously updates the player’s position, velocity, and interactions within the environment.
 
-## Read the Architecture, then look at the figma at the bottom.
+### *Classes, Objects, Variables,*
 
-# Game Architecture for "Out of Control" (Phaser.js + Matter.js)
+### Read the Architecture, then look at the figma at the bottom
 
-## 1. Core Components
+## Game Architecture for "Out of Control" (Phaser.js + Matter.js)
 
-### 1.1 GameManager Class (Phaser.Scene)
+### 1. Core Components
+
+#### 1.1 GameManager Class (Phaser.Scene)
+
 **Responsibilities**: Manages game flow, scenes, and transitions between levels using Phaser’s scene management.
 
 - **Attributes**:
@@ -52,8 +60,10 @@ Game Logic
 
 ---
 
-## 2. Player Class (Phaser.GameObjects.Sprite with Matter.js physics) 
-### *https://docs.phaser.io/phaser/concepts/physics/matter*
+### 2. Player Class (Phaser.GameObjects.Sprite with Matter.js physics)
+
+#### *[Phaser Physics Docs](https://docs.phaser.io/phaser/concepts/physics/matter)*
+
 **Responsibilities**: Represents the player character, including movement and interaction with abilities. Uses Matter.js for physics.
 
 - **Attributes**:
@@ -79,7 +89,8 @@ Game Logic
 
 ---
 
-## 3. Level Class (Phaser.Tilemaps.Tilemap with Matter.js physics)
+### 3. Level Class (Phaser.Tilemaps.Tilemap with Matter.js physics)
+
 **Responsibilities**: Represents an individual level, including tiles, hazards, and pickups. Uses Phaser’s Tilemap system and Matter.js physics for interaction and collision.
 
 - **Attributes**:
@@ -95,9 +106,10 @@ Game Logic
 
 ---
 
-## 4. Game Objects
+### 4. Game Objects
 
-### 4.1 Tile Class (Phaser.Tilemaps.TilemapLayer with Matter.js)
+#### 4.1 Tile Class (Phaser.Tilemaps.TilemapLayer with Matter.js)
+
 **Responsibilities**: Represents individual tiles or platforms in the environment. Uses Matter.js for collision detection and interaction with the player.
 
 - **Attributes**:
@@ -110,7 +122,8 @@ Game Logic
 
 ---
 
-### 4.2 Pickup Class (Phaser.GameObjects.Sprite with Matter.js)
+#### 4.2 Pickup Class (Phaser.GameObjects.Sprite with Matter.js)
+
 **Responsibilities**: Represents a collectible that grants the player new abilities (e.g., dashing or double-jump).
 
 - **Attributes**:
@@ -122,7 +135,8 @@ Game Logic
 
 ---
 
-### 4.3 Hazard Class (Phaser.GameObjects.Sprite with Matter.js)
+#### 4.3 Hazard Class (Phaser.GameObjects.Sprite with Matter.js)
+
 **Responsibilities**: Represents harmful objects, such as spikes, fire, or moving hazards, that can damage or kill the player.
 
 - **Attributes**:
@@ -134,7 +148,8 @@ Game Logic
 
 ---
 
-### 4.4 MovingPlatform Class (Phaser.GameObjects.Sprite with Matter.js)
+#### 4.4 MovingPlatform Class (Phaser.GameObjects.Sprite with Matter.js)
+
 **Responsibilities**: Represents platforms that move along a fixed path using Matter.js physics. Can carry the player if they stand on it.
 
 - **Attributes**:
@@ -147,9 +162,10 @@ Game Logic
 
 ---
 
-## 5. UI and Sound Management
+### 5. UI and Sound Management
 
-### 5.1 UIManager Class
+#### 5.1 UIManager Class
+
 **Responsibilities**: Manages the heads-up display (HUD), menus, and sound settings (music, sound effects) within the game.
 
 - **Attributes**:
@@ -168,7 +184,7 @@ Game Logic
 
 ---
 
-## 6. Physics and Collision Detection (Handled by Matter.js)
+### 6. Physics and Collision Detection (Handled by Matter.js)
 
 Matter.js is integrated into Phaser to handle all physics and collisions automatically, including gravity, velocity, and object interaction.
 
@@ -180,7 +196,7 @@ Matter.js is integrated into Phaser to handle all physics and collisions automat
 
 ---
 
-## 7. Input Handling (Phaser Input System)
+### 7. Input Handling (Phaser Input System)
 
 Phaser’s built-in input system is used to manage all player inputs, such as moving, jumping, and dashing:
 
@@ -190,5 +206,6 @@ Phaser’s built-in input system is used to manage all player inputs, such as mo
 
 Input handling is directly tied to the player’s physics, modifying velocity or triggering actions within the player’s methods.
 
-# FIGMA 
-https://www.figma.com/board/SoJsSq7DXtvtVSMB8vQPK7/OutOfControl?node-id=0-1&node-type=canvas&t=guqSOafY6HJ0ajg3-0
+## FIGMA
+
+[here](https://www.figma.com/board/SoJsSq7DXtvtVSMB8vQPK7/OutOfControl?node-id=0-1&node-type=canvas&t=guqSOafY6HJ0ajg3-0)
