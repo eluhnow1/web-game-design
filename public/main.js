@@ -20,6 +20,7 @@ const config = {
         create: create,
         update: update
     }
+
 };
 
 const game = new Phaser.Game(config);
@@ -38,8 +39,8 @@ let isTransitioningCrouch = false;
 
 const WORLD_WIDTH = 1600;
 const WORLD_HEIGHT = 3200;
-const PLAYER_SIZE = 64; // Updated to match sprite size
-const PLAYER_CROUCH_SIZE = 40; // Smaller height when crouching
+const PLAYER_SIZE = 64;
+const PLAYER_CROUCH_SIZE = 40;
 const MAX_NORMAL_SPEED = 6;
 const MAX_CROUCH_SPEED = 3;
 
@@ -86,6 +87,12 @@ function preload() {
     bgGraphics.fillCircle(gridSize, gridSize, 2);
     bgGraphics.generateTexture('grid', gridSize, gridSize);
     bgGraphics.destroy();
+
+    // this.load.tilemapTiledJSON('map', './assets/tilemap.json');
+
+    // // Load tileset images with matching keys
+    // this.load.image('gametileset', './assets/world_tileset.png');
+    // this.load.image('platforms', './assets/platforms.png');
 }
 
 function createAnimations() {
@@ -156,32 +163,37 @@ function createAnimations() {
 function create() {
     currentScene = this;
     
-    // Add background grid
-    const backgroundGroup = this.add.group();
-    for (let y = 0; y < WORLD_HEIGHT; y += 32) {
-        for (let x = 0; x < WORLD_WIDTH; x += 32) {
-            backgroundGroup.add(this.add.image(x, y, 'grid').setOrigin(0, 0));
-        }
-    }
-
-    // Create world boundaries
-    const wallThickness = 60;
-    this.matter.add.rectangle(0, WORLD_HEIGHT/2, wallThickness, WORLD_HEIGHT, {
-        isStatic: true,
-        label: 'wall'
-    });
-    this.matter.add.rectangle(WORLD_WIDTH, WORLD_HEIGHT/2, wallThickness, WORLD_HEIGHT, {
-        isStatic: true,
-        label: 'wall'
-    });
-    this.matter.add.rectangle(WORLD_WIDTH/2, WORLD_HEIGHT, WORLD_WIDTH, wallThickness, {
-        isStatic: true,
-        label: 'wall',
-        friction: 0,
-        frictionStatic: 0
-    });
+    // // Create the tilemap
+    // const map = this.make.tilemap({ key: 'map' });
     
-    player = this.matter.add.sprite(400, WORLD_HEIGHT - 100, 'idle', null, {
+    // // Add tilesets - Note: use exact names from your tilemap JSON
+    // const gametileset = map.addTilesetImage('gametileset', 'gametileset');
+    // const platformsTileset = map.addTilesetImage('platforms', 'platforms');
+    
+    // // Create layers with both tilesets available
+    // const backgroundObjects = map.createLayer('background objects', [gametileset, platformsTileset]);
+    // const mainLayer = map.createLayer('Tile Layer 1', [gametileset, platformsTileset]);
+    // const laddersLayer = map.createLayer('ladders', [gametileset, platformsTileset]);
+    // const crumblingLayer = map.createLayer('crumbling platforms', [gametileset, platformsTileset]);
+    // const breakableLayer = map.createLayer('breakable blocks', [gametileset, platformsTileset]);
+
+    // // Convert tiles to Matter physics bodies
+    // const solidTiles = [1, 2, 3, 4, 9, 17, 19]; // Add any other solid tile indexes
+    
+    // mainLayer.forEachTile((tile) => {
+    //     if (solidTiles.includes(tile.index)) {
+    //         const x = tile.getCenterX();
+    //         const y = tile.getCenterY();
+    //         const tileBody = this.matter.add.rectangle(x, y, 16, 16, {
+    //             isStatic: true,
+    //             label: 'ground'
+    //         });
+    //     }
+    // });
+
+
+    // Create player
+    player = this.matter.add.sprite(400, 400, 'idle', null, {
         friction: 0,
         frictionStatic: 0,
         frictionAir: 0.01,
@@ -190,7 +202,7 @@ function create() {
         label: 'player',
         inertia: Infinity,
         render: {
-            visible: false  // This ensures the debug body is always hidden
+            visible: false
         },
         shape: {
             type: 'rectangle',
@@ -201,14 +213,13 @@ function create() {
     
     // Force fixed rotation and set origin
     player.setFixedRotation(true);
-    player.setOrigin(0.5, 0.5);  // Ensure origin is centered
+    player.setOrigin(0.5, 0.5);
     
     createAnimations();
     player.play('idle');
-    
 
     // Set up camera
-    this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     this.cameras.main.startFollow(player, true, 0.2, 0.2);
     this.cameras.main.setZoom(2);
     
