@@ -11,8 +11,8 @@ const config = {
         default: 'matter',
         matter: {
             gravity: { y: 2 },
-            debug: false,  // Change this to false
-            setBounds: false
+            debug: false,
+            setBounds: true  // Enable world bounds
         }
     },
     scene: {
@@ -20,7 +20,6 @@ const config = {
         create: create,
         update: update
     }
-
 };
 
 const game = new Phaser.Game(config);
@@ -39,8 +38,8 @@ let isTransitioningCrouch = false;
 
 const WORLD_WIDTH = 1600;
 const WORLD_HEIGHT = 3200;
-const PLAYER_SIZE = 64;
-const PLAYER_CROUCH_SIZE = 40;
+const PLAYER_SIZE = 32;
+const PLAYER_CROUCH_SIZE = 16;
 const MAX_NORMAL_SPEED = 6;
 const MAX_CROUCH_SPEED = 3;
 
@@ -74,6 +73,13 @@ function preload() {
         frameWidth: 100, frameHeight: 64 
     });
 
+    // Load tilemap
+    this.load.tilemapTiledJSON('map', './assets/tilemap.json');
+
+    // Load tileset images
+    this.load.image('gametileset', './assets/world_tileset.png');
+    this.load.image('platforms', './assets/platforms.png');
+
     // Create grid texture for background
     const bgGraphics = this.add.graphics();
     bgGraphics.lineStyle(1, 0xcccccc);
@@ -87,12 +93,6 @@ function preload() {
     bgGraphics.fillCircle(gridSize, gridSize, 2);
     bgGraphics.generateTexture('grid', gridSize, gridSize);
     bgGraphics.destroy();
-
-    // this.load.tilemapTiledJSON('map', './assets/tilemap.json');
-
-    // // Load tileset images with matching keys
-    // this.load.image('gametileset', './assets/world_tileset.png');
-    // this.load.image('platforms', './assets/platforms.png');
 }
 
 function createAnimations() {
@@ -163,36 +163,38 @@ function createAnimations() {
 function create() {
     currentScene = this;
     
-    // // Create the tilemap
-    // const map = this.make.tilemap({ key: 'map' });
+    // Create the tilemap
+    const map = this.make.tilemap({ key: 'map' });
     
-    // // Add tilesets - Note: use exact names from your tilemap JSON
-    // const gametileset = map.addTilesetImage('gametileset', 'gametileset');
-    // const platformsTileset = map.addTilesetImage('platforms', 'platforms');
+    // Add tilesets
+    const gametileset = map.addTilesetImage('gametileset', 'gametileset');
+    const platformsTileset = map.addTilesetImage('platforms', 'platforms');
     
-    // // Create layers with both tilesets available
-    // const backgroundObjects = map.createLayer('background objects', [gametileset, platformsTileset]);
-    // const mainLayer = map.createLayer('Tile Layer 1', [gametileset, platformsTileset]);
-    // const laddersLayer = map.createLayer('ladders', [gametileset, platformsTileset]);
-    // const crumblingLayer = map.createLayer('crumbling platforms', [gametileset, platformsTileset]);
-    // const breakableLayer = map.createLayer('breakable blocks', [gametileset, platformsTileset]);
+    // Create layers
+    const backgroundObjects = map.createLayer('background objects', [gametileset, platformsTileset]);
+    const mainLayer = map.createLayer('Tile Layer 1', [gametileset, platformsTileset]);
+    const laddersLayer = map.createLayer('ladders', [gametileset, platformsTileset]);
+    const crumblingLayer = map.createLayer('crumbling platforms', [gametileset, platformsTileset]);
+    const breakableLayer = map.createLayer('breakable blocks', [gametileset, platformsTileset]);
 
-    // // Convert tiles to Matter physics bodies
-    // const solidTiles = [1, 2, 3, 4, 9, 17, 19]; // Add any other solid tile indexes
+    // Convert solid tiles to Matter physics bodies
+    const solidTiles = [1, 2, 3, 4, 9, 17, 19]; // Add solid tile indexes
     
-    // mainLayer.forEachTile((tile) => {
-    //     if (solidTiles.includes(tile.index)) {
-    //         const x = tile.getCenterX();
-    //         const y = tile.getCenterY();
-    //         const tileBody = this.matter.add.rectangle(x, y, 16, 16, {
-    //             isStatic: true,
-    //             label: 'ground'
-    //         });
-    //     }
-    // });
+    mainLayer.forEachTile((tile) => {
+        if (solidTiles.includes(tile.index)) {
+            const x = tile.getCenterX();
+            const y = tile.getCenterY();
+            this.matter.add.rectangle(x, y, 16, 16, {
+                isStatic: true,
+                label: 'ground'
+            });
+        }
+    });
 
+    // Set up world bounds
+    this.matter.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
-    // Create player
+    // Create player after tilemap
     player = this.matter.add.sprite(400, 400, 'idle', null, {
         friction: 0,
         frictionStatic: 0,
@@ -206,14 +208,14 @@ function create() {
         },
         shape: {
             type: 'rectangle',
-            width: 32,
+            width: 16, // Half of the original 32
             height: PLAYER_SIZE
         }
     });
     
-    // Force fixed rotation and set origin
     player.setFixedRotation(true);
     player.setOrigin(0.5, 0.5);
+    player.setScale(0.5);
     
     createAnimations();
     player.play('idle');
@@ -327,28 +329,41 @@ function update() {
     const jumpForce = -12;
     const maxSpeed = isCrouching ? MAX_CROUCH_SPEED : MAX_NORMAL_SPEED;
     
+    // Force rotation to stay at 0
+    player.setRotation(0);
+    
     // Handle left/right movement
     if (cursors.left.isDown && !isDashing) {
-        if (player.body.velocity.x > -maxSpeed) {
-            player.setVelocityX(Math.max(-maxSpeed, player.body.velocity.x - speed));
-        }
+        // Use setVelocityX instead of body velocity directly
+        const newVelocity = Math.max(-maxSpeed, player.body.velocity.x - speed);
+        player.setVelocityX(newVelocity);
         player.flipX = true;
         facing = 'left';
-        if (!isTransitioningCrouch) {
+        
+        // Only play walk animation if actually moving
+        if (!isTransitioningCrouch && Math.abs(player.body.velocity.x) > 0.1) {
             player.play(isCrouching ? 'crouch-walk' : 'walk', true);
         }
     } else if (cursors.right.isDown && !isDashing) {
-        if (player.body.velocity.x < maxSpeed) {
-            player.setVelocityX(Math.min(maxSpeed, player.body.velocity.x + speed));
-        }
+        // Use setVelocityX instead of body velocity directly
+        const newVelocity = Math.min(maxSpeed, player.body.velocity.x + speed);
+        player.setVelocityX(newVelocity);
         player.flipX = false;
         facing = 'right';
-        if (!isTransitioningCrouch) {
+        
+        // Only play walk animation if actually moving
+        if (!isTransitioningCrouch && Math.abs(player.body.velocity.x) > 0.1) {
             player.play(isCrouching ? 'crouch-walk' : 'walk', true);
         }
     } else if (!isDashing) {
-        player.setVelocityX(0);
-        if (!isTransitioningCrouch && !player.anims.currentAnim?.key.includes('jump')) {
+        // Add deceleration instead of immediate stop
+        const decel = 0.8;
+        player.setVelocityX(player.body.velocity.x * decel);
+        
+        // Only play idle if nearly stopped
+        if (!isTransitioningCrouch && 
+            !player.anims.currentAnim?.key.includes('jump') && 
+            Math.abs(player.body.velocity.x) < 0.1) {
             player.play(isCrouching ? 'crouch-idle' : 'idle', true);
         }
     }
@@ -371,7 +386,7 @@ function update() {
         player.play('fall');
     }
 
-    // Keep player in world bounds
+    // Keep player in world bounds and maintain rotation
     if (player.x < 0) player.setX(0);
     if (player.x > WORLD_WIDTH) player.setX(WORLD_WIDTH);
     if (player.y < 0) player.setY(0);
@@ -380,6 +395,10 @@ function update() {
         resetJump();
         canDash = true;
     }
+
+    // Force angle to remain at 0
+    player.body.angle = 0;
+    player.body.angularVelocity = 0;
 
     // Camera handling
     const camera = this.cameras.main;
