@@ -11,11 +11,16 @@ const config = {
         default: 'matter',
         matter: {
             gravity: { y: 2 },
-            debug: true,
+            debug: {
+                showBodies: true,
+                showCollisions: true,
+                showVelocity: true,
+                showBounds: true
+            },
             setBounds: true,
             positionIterations: 6,
             velocityIterations: 4,
-            enableSleeping: false,  // Prevent bodies from sleeping
+            enableSleeping: false,
             plugins: {
                 attractors: false,
                 wrap: false
@@ -44,39 +49,7 @@ let isCrouching = false;
 let isTransitioningCrouch = false;
 let lastValidY = 0;
 let lastDebugTime = 0;
-// Add these constants at the top with your other constants
-const CROUCH_CHECK_PADDING = 8;  // Padding for crouch space check
-const MAX_FALL_VELOCITY = 12;    // Maximum fall speed
-const GROUND_CHECK_POINTS = 3;   // Number of ground check points
-
-// Add this helper function to check if there's space to crouch
-function canCrouchAtCurrentPosition() {
-    const scene = currentScene;
-    const checkHeight = PLAYER_CROUCH_SIZE + CROUCH_CHECK_PADDING;
-    const checkWidth = 20; // Player width
-    
-    // Create a test body at the player's position
-    const testBody = scene.matter.add.rectangle(
-        player.x,
-        player.y,
-        checkWidth,
-        checkHeight,
-        {
-            isSensor: true,
-            isStatic: false,
-            render: { visible: false }
-        }
-    );
-    
-    // Check for collisions
-    const collisions = scene.matter.query.collides(testBody, scene.matter.world.localWorld.bodies);
-    
-    // Remove the test body
-    scene.matter.world.remove(testBody);
-    
-    // Return true if no collisions found
-    return collisions.length === 0;
-}
+let TILE_SIZE = 16;
 
 const WORLD_WIDTH = 1600;
 const WORLD_HEIGHT = 3200;
@@ -202,6 +175,74 @@ function createAnimations() {
     });
 }
 
+function createCollisionBodies(mainLayer) {  // Add mainLayer parameter here
+    const solidTiles = [1, 2, 3, 4, 9, 17, 19];
+    const mapWidth = mainLayer.width;
+    const mapHeight = mainLayer.height;
+    const visited = Array(mapHeight).fill(0).map(() => Array(mapWidth).fill(false));
+    
+    // Helper function to check if a tile should be included
+    function isSolidTile(x, y) {
+        if (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight) return false;
+        const tile = mainLayer.getTileAt(x, y);
+        return tile && solidTiles.includes(tile.index);
+    }
+    
+    // Scan each tile
+    for (let y = 0; y < mapHeight; y++) {
+        for (let x = 0; x < mapWidth; x++) {
+            if (visited[y][x] || !isSolidTile(x, y)) continue;
+            
+            // Find maximum width
+            let width = 1;
+            while (x + width < mapWidth && isSolidTile(x + width, y) && !visited[y][x + width]) {
+                width++;
+            }
+            
+            // Find maximum height
+            let height = 1;
+            let valid = true;
+            while (valid && y + height < mapHeight) {
+                for (let ix = x; ix < x + width; ix++) {
+                    if (!isSolidTile(ix, y + height) || visited[y + height][ix]) {
+                        valid = false;
+                        break;
+                    }
+                }
+                if (valid) height++;
+            }
+            
+            // Mark tiles as visited
+            for (let iy = y; iy < y + height; iy++) {
+                for (let ix = x; ix < x + width; ix++) {
+                    visited[iy][ix] = true;
+                }
+            }
+            
+            // Create collision body
+            const centerX = (x + width/2) * TILE_SIZE;
+            const centerY = (y + height/2) * TILE_SIZE;
+            
+            currentScene.matter.add.rectangle(centerX, centerY, width * TILE_SIZE, height * TILE_SIZE, {
+                isStatic: true,
+                friction: 0.5,
+                label: 'ground',
+                collisionFilter: {
+                    category: 0x0001,
+                    mask: 0x0002
+                },
+                chamfer: { radius: 0 },
+                render: {
+                    fillStyle: 'rgba(255, 0, 0, 0.3)',
+                    strokeStyle: 'rgb(255, 0, 0)',
+                    lineWidth: 1
+                },
+                slop: 0
+            });
+        }
+    }
+}
+
 function create() {
     currentScene = this;
     
@@ -219,31 +260,8 @@ function create() {
     const crumblingLayer = map.createLayer('crumbling platforms', [gametileset, platformsTileset]);
     const breakableLayer = map.createLayer('breakable blocks', [gametileset, platformsTileset]);
 
-    const solidTiles = [1, 2, 3, 4, 9, 17, 19];
-    
-    // Create collision bodies for solid tiles
-    mainLayer.forEachTile((tile) => {
-        if (solidTiles.includes(tile.index)) {
-            const x = tile.getCenterX();
-            const y = tile.getCenterY();
-            
-            // Create a full square collision body
-            this.matter.add.rectangle(x, y, 16, 16, {
-                isStatic: true,
-                friction: 0.5,
-                label: 'ground',
-                collisionFilter: {
-                    category: 0x0001,
-                    mask: 0x0002
-                },
-                chamfer: { radius: 0 },  // Ensure sharp corners
-                render: {
-                    visible: false
-                },
-                slop: 0  // Reduce position slop
-            });
-        }
-    });
+    this.mainLayer = mainLayer;  // Store reference to mainLayer
+    createCollisionBodies(mainLayer);
     
 
     // Update collision properties
@@ -336,45 +354,19 @@ function create() {
 
 function startCrouch() {
     if (isTransitioningCrouch || isCrouching) return;
-    
-    // Check if there's enough space to crouch
-    if (!canCrouchAtCurrentPosition()) {
-        return; // Don't allow crouch if there's not enough space
-    }
 
     isTransitioningCrouch = true;
 
-    // Create new collision body for crouch state instead of scaling
-    const crouchBody = currentScene.matter.bodies.rectangle(
-        player.x,
-        player.y + (PLAYER_SIZE - PLAYER_CROUCH_SIZE) / 2,
-        20,  // width
-        PLAYER_CROUCH_SIZE,
-        {
-            friction: 0.001,
-            frictionStatic: 0.05,
-            frictionAir: 0.01,
-            restitution: 0,
-            density: 0.001,
-            label: 'player',
-            inertia: Infinity,
-            collisionFilter: {
-                category: 0x0002,
-                mask: 0x0001
-            }
+    // Scale the body for crouching
+    const scaleFactor = PLAYER_CROUCH_SIZE / PLAYER_SIZE;
+    player.body.parts.forEach((part) => {
+        if (part !== player.body) {
+            this.matter.body.scale(part, 1, scaleFactor);
         }
-    );
-
-    // Smoothly transition to new body
-    currentScene.matter.body.setPosition(crouchBody, {
-        x: player.x,
-        y: player.y + (PLAYER_SIZE - PLAYER_CROUCH_SIZE) / 2
     });
 
-    // Replace the old body with the new one
-    const oldBody = player.body;
-    player.setExistingBody(crouchBody);
-    currentScene.matter.world.remove(oldBody);
+    // Adjust player position slightly to prevent clipping into the ground
+    player.setPosition(player.x, player.y + (PLAYER_SIZE - PLAYER_CROUCH_SIZE) / 2);
 
     // Play animation
     player.play('crouch-transition').once('animationcomplete', () => {
@@ -387,55 +379,26 @@ function startCrouch() {
 function endCrouch() {
     if (isTransitioningCrouch || !isCrouching) return;
 
-    // Check if there's space to stand up
-    const standingY = player.y - (PLAYER_SIZE - PLAYER_CROUCH_SIZE) / 2;
-    const testBody = currentScene.matter.add.rectangle(
-        player.x,
-        standingY,
-        20,
-        PLAYER_SIZE,
-        { isSensor: true }
-    );
-    
-    const collisions = currentScene.matter.query.collides(testBody, currentScene.matter.world.localWorld.bodies);
-    currentScene.matter.world.remove(testBody);
-    
-    if (collisions.length > 0) {
-        return; // Don't allow standing if there's not enough space
-    }
-
     isTransitioningCrouch = true;
 
-    // Create new standing body
-    const standingBody = currentScene.matter.bodies.rectangle(
-        player.x,
-        standingY,
-        20,
-        PLAYER_SIZE,
-        {
-            friction: 0.001,
-            frictionStatic: 0.05,
-            frictionAir: 0.01,
-            restitution: 0,
-            density: 0.001,
-            label: 'player',
-            inertia: Infinity,
-            collisionFilter: {
-                category: 0x0002,
-                mask: 0x0001
-            }
+    // Restore the original body scale
+    const scaleFactor = PLAYER_SIZE / PLAYER_CROUCH_SIZE;
+    player.body.parts.forEach((part) => {
+        if (part !== player.body) {
+            this.matter.body.scale(part, 1, scaleFactor);
         }
-    );
+    });
 
-    // Replace body
-    const oldBody = player.body;
-    player.setExistingBody(standingBody);
-    currentScene.matter.world.remove(oldBody);
+    // Adjust player position back to original
+    player.setPosition(player.x, player.y - (PLAYER_SIZE - PLAYER_CROUCH_SIZE) / 2);
 
     // Play animation
     player.play('crouch-transition', true).once('animationcomplete', () => {
         isCrouching = false;
         isTransitioningCrouch = false;
+        canDoubleJump = true;
+        hasDoubleJumped = false;
+
         if (!player.body.velocity.x) {
             player.play('idle');
         } else {
@@ -446,8 +409,8 @@ function endCrouch() {
 
 
 function update() {
-    const normalSpeed = 0.5;
-    const crouchSpeed = 0.25;
+    const normalSpeed = 0.2;
+    const crouchSpeed = 0.1;
     const speed = isCrouching ? crouchSpeed : normalSpeed;
     const jumpForce = -9;
     const maxSpeed = isCrouching ? MAX_CROUCH_SPEED : MAX_NORMAL_SPEED;
@@ -558,16 +521,6 @@ function update() {
     player.body.angle = 0;
     player.body.angularVelocity = 0;
 
-    if (player.body.velocity.y > 0) {  // If falling
-        // Limit fall speed
-        if (player.body.velocity.y > MAX_FALL_VELOCITY) {
-            player.setVelocityY(MAX_FALL_VELOCITY);
-        }
-        
-        // Check for ground collision
-        checkGroundCollision();
-    }
-
     // Camera handling
     const camera = this.cameras.main;
     const marginLeft = 400;
@@ -620,53 +573,4 @@ function dash() {
 function resetJump() {
     canDoubleJump = true;
     hasDoubleJumped = false;
-}
-
-function checkGroundCollision() {
-    const scene = currentScene;
-    const bodyWidth = player.body.bounds.max.x - player.body.bounds.min.x;
-    const rayStartY = player.y + (PLAYER_SIZE/2) - 2; // Adjusted start position
-    const rayLength = 8; // Reduced ray length for more precise detection
-    
-    // Check multiple points along the bottom of the player
-    for (let i = 0; i < GROUND_CHECK_POINTS; i++) {
-        const rayStartX = player.x - (bodyWidth/2) + (bodyWidth * i/(GROUND_CHECK_POINTS-1));
-        
-        const ray = scene.matter.query.ray(
-            scene.matter.world.localWorld.bodies,
-            { x: rayStartX, y: rayStartY },
-            { x: rayStartX, y: rayStartY + rayLength },
-            0.5
-        );
-        
-        // Check if we found any collision bodies and they're ground bodies
-        if (ray.length > 0 && ray[0].body.label === 'ground') {
-            const collisionBody = ray[0].body;
-            const groundY = collisionBody.bounds.min.y;
-            
-            // More precise ground check with smaller threshold
-            const distanceToGround = Math.abs(player.y + PLAYER_SIZE/2 - groundY);
-            
-            if (distanceToGround < 4) { // Smaller threshold for ground detection
-                // Set position precisely
-                player.setY(groundY - PLAYER_SIZE/2);
-                player.setVelocityY(0);
-                
-                // Only reset jump and play landing if we weren't already on ground
-                if (player.anims.currentAnim?.key === 'fall') {
-                    resetJump();
-                    canDash = true;
-                    player.play('land', true).once('animationcomplete', () => {
-                        if (!player.body.velocity.x) {
-                            player.play('idle');
-                        } else {
-                            player.play('walk');
-                        }
-                    });
-                }
-                return true;
-            }
-        }
-    }
-    return false;
 }
