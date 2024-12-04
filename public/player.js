@@ -129,45 +129,107 @@ class Player {
         this.updateCamera();
     }
 
-    handleMovement() {//Handles left and right movement (including crouching), also plays ankmations accordingly
+    handleMovement() {
         const normalSpeed = 0.2;
         const crouchSpeed = 0.1;
         const speed = this.isCrouching ? crouchSpeed : normalSpeed;
         const maxSpeed = this.isCrouching ? MAX_CROUCH_SPEED : MAX_NORMAL_SPEED;
-
+    
         this.sprite.setRotation(0);
-
-        if ((this.scene.cursors.left.isDown || this.scene.cursors.right.isDown) && !this.isDashing) {
-            const movingLeft = this.scene.cursors.left.isDown;
-            const movingRight = this.scene.cursors.right.isDown;
-        
-            const direction = movingLeft ? -1 : 1;
-            const newVelocity = Phaser.Math.Clamp(this.sprite.body.velocity.x + direction * speed, -maxSpeed, maxSpeed);
-            this.sprite.setVelocityX(newVelocity);
-        
-            this.sprite.flipX = movingLeft;
-            this.facing = movingLeft ? 'left' : 'right';
-        
-            if (!this.isTransitioningCrouch && Math.abs(this.sprite.body.velocity.x) > 0.1) {
-                const anim = this.isCrouching ? 'crouch-walk' : 'walk';
-                if (this.sprite.anims.currentAnim?.key !== anim) {
-                    this.sprite.play(anim, true);
+    
+        // Handle horizontal movement only if not dashing
+        if (!this.isDashing) {
+            // Handle left and right movement
+            if ((this.scene.cursors.left.isDown || this.scene.cursors.right.isDown)) {
+                const movingLeft = this.scene.cursors.left.isDown;
+                const movingRight = this.scene.cursors.right.isDown;
+    
+                const direction = movingLeft ? -1 : 1;
+                const newVelocityX = Phaser.Math.Clamp(direction * speed, -maxSpeed, maxSpeed);
+                this.sprite.setVelocityX(newVelocityX);
+    
+                this.sprite.flipX = movingLeft;
+                this.facing = movingLeft ? 'left' : 'right';
+    
+                if (!this.isTransitioningCrouch && Math.abs(this.sprite.body.velocity.x) > 0.1) {
+                    const anim = this.isCrouching ? 'crouch-walk' : 'walk';
+                    if (this.sprite.anims.currentAnim?.key !== anim) {
+                        this.sprite.play(anim, true);
+                    }
+                }
+            } else {
+                // Apply deceleration when no keys are pressed
+                const decel = 0.8;
+                this.sprite.setVelocityX(this.sprite.body.velocity.x * decel);
+    
+                if (!this.isTransitioningCrouch &&
+                    !this.sprite.anims.currentAnim?.key.includes('jump') &&
+                    Math.abs(this.sprite.body.velocity.x) < 0.1) {
+                    const anim = this.isCrouching ? 'crouch-idle' : 'idle';
+                    if (this.sprite.anims.currentAnim?.key !== anim) {
+                        this.sprite.play(anim, true);
+                    }
                 }
             }
-        } else if (!this.isDashing) {
-            const decel = 0.8;
-            this.sprite.setVelocityX(this.sprite.body.velocity.x * decel);
-        
-            if (!this.isTransitioningCrouch &&
-                !this.sprite.anims.currentAnim?.key.includes('jump') &&
-                Math.abs(this.sprite.body.velocity.x) < 0.1) {
-                const anim = this.isCrouching ? 'crouch-idle' : 'idle';
-                if (this.sprite.anims.currentAnim?.key !== anim) {
-                    this.sprite.play(anim, true);
-                }
+        } else {
+            // Dash logic
+            if (this.isDashing) {
+                // Make sure the character stays in motion during a dash
+                const dashSpeed = 10; // or whatever you use for dash speed
+                this.sprite.setVelocityX(this.facing === 'right' ? dashSpeed : -dashSpeed);
             }
         }
     }
+    
+    startCrouch() {
+        if (this.isTransitioningCrouch || this.isCrouching) return;
+    
+        this.isTransitioningCrouch = true;
+    
+        const scaleFactor = PLAYER_CROUCH_SIZE / PLAYER_SIZE;
+        this.sprite.body.parts.forEach((part) => {
+            if (part !== this.sprite.body) {
+                this.scene.matter.body.scale(part, 1, scaleFactor);
+            }
+        });
+    
+        this.sprite.setPosition(this.sprite.x, this.sprite.y + (PLAYER_SIZE - PLAYER_CROUCH_SIZE) / 2);
+    
+        this.sprite.play('crouch-transition').once('animationcomplete', () => {
+            this.isCrouching = true;
+            this.isTransitioningCrouch = false;
+            this.sprite.play('crouch-idle');
+        });
+    }
+    
+    endCrouch() {
+        if (this.isTransitioningCrouch || !this.isCrouching) return;
+    
+        this.isTransitioningCrouch = true;
+    
+        const scaleFactor = PLAYER_SIZE / PLAYER_CROUCH_SIZE;
+        this.sprite.body.parts.forEach((part) => {
+            if (part !== this.sprite.body) {
+                this.scene.matter.body.scale(part, 1, scaleFactor);
+            }
+        });
+    
+        this.sprite.setPosition(this.sprite.x, this.sprite.y - (PLAYER_SIZE - PLAYER_CROUCH_SIZE) / 2);
+    
+        this.sprite.play('crouch-transition', true).once('animationcomplete', () => {
+            this.isCrouching = false;
+            this.isTransitioningCrouch = false;
+            this.canDoubleJump = true;
+            this.hasDoubleJumped = false;
+    
+            if (!this.sprite.body.velocity.x) {
+                this.sprite.play('idle');
+            } else {
+                this.sprite.play('walk');
+            }
+        });
+    }
+    
 
     handleJump() {//Handles the jumping phyics and animation
         const jumpForce = -9;
