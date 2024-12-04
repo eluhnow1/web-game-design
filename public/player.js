@@ -130,7 +130,7 @@ class Player {
     }
 
     handleMovement() {
-        const normalSpeed = 0.2;
+        const normalSpeed = 1.5;
         const crouchSpeed = 0.1;
         const speed = this.isCrouching ? crouchSpeed : normalSpeed;
         const maxSpeed = this.isCrouching ? MAX_CROUCH_SPEED : MAX_NORMAL_SPEED;
