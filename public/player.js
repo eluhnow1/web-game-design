@@ -130,8 +130,8 @@ class Player {
     }
 
     handleMovement() {
-        const normalSpeed = 1.5; // Default speed for normal movement
-        const crouchSpeed = 0.3; // Speed for crouching movement
+        const normalSpeed = 2; // Default speed for normal movement
+        const crouchSpeed = 1; // Speed for crouching movement
         const speed = this.isCrouching ? crouchSpeed : normalSpeed;
         const maxSpeed = this.isCrouching ? MAX_CROUCH_SPEED : MAX_NORMAL_SPEED;
     
@@ -171,56 +171,6 @@ class Player {
                 }
             }
         }
-    }
-    
-    
-    startCrouch() {
-        if (this.isTransitioningCrouch || this.isCrouching) return;
-    
-        this.isTransitioningCrouch = true;
-    
-        const scaleFactor = PLAYER_CROUCH_SIZE / PLAYER_SIZE;
-        this.sprite.body.parts.forEach((part) => {
-            if (part !== this.sprite.body) {
-                this.scene.matter.body.scale(part, 1, scaleFactor);
-            }
-        });
-    
-        this.sprite.setPosition(this.sprite.x, this.sprite.y + (PLAYER_SIZE - PLAYER_CROUCH_SIZE) / 2);
-    
-        this.sprite.play('crouch-transition').once('animationcomplete', () => {
-            this.isCrouching = true;
-            this.isTransitioningCrouch = false;
-            this.sprite.play('crouch-idle');
-        });
-    }
-    
-    endCrouch() {
-        if (this.isTransitioningCrouch || !this.isCrouching) return;
-    
-        this.isTransitioningCrouch = true;
-    
-        const scaleFactor = PLAYER_SIZE / PLAYER_CROUCH_SIZE;
-        this.sprite.body.parts.forEach((part) => {
-            if (part !== this.sprite.body) {
-                this.scene.matter.body.scale(part, 1, scaleFactor);
-            }
-        });
-    
-        this.sprite.setPosition(this.sprite.x, this.sprite.y - (PLAYER_SIZE - PLAYER_CROUCH_SIZE) / 2);
-    
-        this.sprite.play('crouch-transition', true).once('animationcomplete', () => {
-            this.isCrouching = false;
-            this.isTransitioningCrouch = false;
-            this.canDoubleJump = true;
-            this.hasDoubleJumped = false;
-    
-            if (!this.sprite.body.velocity.x) {
-                this.sprite.play('idle');
-            } else {
-                this.sprite.play('walk');
-            }
-        });
     }
     
 
@@ -324,8 +274,8 @@ class Player {
     }
 
     dash() {//Handles the dash physics
-        const dashSpeed = 10;
-        const dashDuration = 250;
+        const dashSpeed = 8;
+        const dashDuration = 200;
         const dashDeceleration = 0.8;
         
         this.isDashing = true;

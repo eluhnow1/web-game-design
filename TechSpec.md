@@ -100,9 +100,8 @@ Game Logic
   - `exit`: (Phaser.GameObjects.Sprite) The level exit goal for the player.
 
 - **Methods**:
-  - `loadLevel(levelData: Object)`: Loads the level, including tilemap, pickups, hazards, and exits.
-  - `checkForCompletion()`: Detects if the player has reached the exit point.
-  - `resetLevel()`: Resets the level upon player death.
+  - `create()`: Loads the level, including tilemap, pickups, hazards, and exits.
+  - `createCollisionBodies()`: Gives collision logic to objects in the tilemap
 
 ---
 

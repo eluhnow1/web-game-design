@@ -8,9 +8,11 @@ class Level {
         this.hazards = [];
         this.exit = null;
         this.mainLayer = null;
+        this.crumblingLayer = null;
+        this.crumblingPlatforms = new Map(); // Store platform states
     }
 
-    create() {//Initializes tilemap and camera bounds and zoom
+    create() {
         // Create the tilemap
         const map = this.scene.make.tilemap({ key: 'map' });
         
@@ -22,19 +24,102 @@ class Level {
         const backgroundObjects = map.createLayer('background objects', [gametileset, platformsTileset]);
         this.mainLayer = map.createLayer('Tile Layer 1', [gametileset, platformsTileset]);
         const laddersLayer = map.createLayer('ladders', [gametileset, platformsTileset]);
-        const crumblingLayer = map.createLayer('crumbling platforms', [gametileset, platformsTileset]);
+        this.crumblingLayer = map.createLayer('crumbling platforms', [gametileset, platformsTileset]);
         const breakableLayer = map.createLayer('breakable blocks', [gametileset, platformsTileset]);
     
         this.mainLayer.setCollisionByProperty({ collision: true });
+        this.crumblingLayer.setCollisionByProperty({ collision: true });
+        
+        // Initialize crumbling platform collision handling
+        this.setupCrumblingPlatforms();
         this.createCollisionBodies();
     
-        // Fix: Change this.cameras to this.scene.cameras
         this.scene.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
         this.scene.cameras.main.startFollow(this.scene.player.sprite, true, 0.2, 0.2);
-        this.scene.cameras.main.setZoom(2.5);
+        this.scene.cameras.main.setZoom(3.5);
     }
 
-    createCollisionBodies() {//Gives collision logic to all tiles in a certain layer of the map, also connects adjacent ones
+    setupCrumblingPlatforms() {
+        // Get all tiles in the crumbling layer
+        const crumblingTiles = this.crumblingLayer.getTilesWithin();
+        
+        crumblingTiles.forEach(tile => {
+            if (tile.index !== -1) { // If tile exists
+                this.crumblingPlatforms.set(`${tile.x},${tile.y}`, {
+                    tile: tile,
+                    timer: null,
+                    isShaking: false,
+                    originalX: tile.pixelX,
+                    respawnTimer: null,
+                    visible: true
+                });
+            }
+        });
+
+        // Set up collision callback
+        this.scene.matter.world.on('collisionStart', (event) => {
+            event.pairs.forEach((pair) => {
+                if (pair.bodyA.label === 'player' || pair.bodyB.label === 'player') {
+                    const playerBody = pair.bodyA.label === 'player' ? pair.bodyA : pair.bodyB;
+                    const tileBody = pair.bodyA.label === 'player' ? pair.bodyB : pair.bodyA;
+
+                    // Check if player is standing on a crumbling platform
+                    if (playerBody.velocity.y >= 0) { // Player is moving downward or standing
+                        const tileX = Math.floor(tileBody.position.x / 16);
+                        const tileY = Math.floor(tileBody.position.y / 16);
+                        const platformKey = `${tileX},${tileY}`;
+                        
+                        if (this.crumblingPlatforms.has(platformKey)) {
+                            const platform = this.crumblingPlatforms.get(platformKey);
+                            if (platform.visible && !platform.isShaking) {
+                                this.startCrumbling(platformKey);
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    startCrumbling(platformKey) {
+        const platform = this.crumblingPlatforms.get(platformKey);
+        if (!platform || !platform.visible) return;
+
+        platform.isShaking = true;
+        let shakeOffset = 0;
+        let shakeIntensity = 0.5;
+
+        // Shake animation
+        platform.timer = this.scene.time.addEvent({
+            delay: 16,
+            callback: () => {
+                if (platform.visible) {
+                    shakeOffset = Math.sin(this.scene.time.now * 0.1) * shakeIntensity;
+                    platform.tile.pixelX = platform.originalX + shakeOffset;
+                    shakeIntensity += 0.1;
+                }
+            },
+            loop: true
+        });
+
+        // Destroy platform after 1 second
+        this.scene.time.delayedCall(1000, () => {
+            if (platform.timer) platform.timer.destroy();
+            platform.isShaking = false;
+            platform.visible = false;
+            platform.tile.setVisible(false);
+            platform.tile.pixelX = platform.originalX;
+            
+            // Respawn platform after 5 seconds
+            platform.respawnTimer = this.scene.time.delayedCall(5000, () => {
+                platform.visible = true;
+                platform.tile.setVisible(true);
+                platform.tile.pixelX = platform.originalX;
+            });
+        });
+    }
+
+    createCollisionBodies() {
         const solidTiles = [1, 2, 3, 4, 9, 17, 19];
         const mapWidth = this.mainLayer.width;
         const mapHeight = this.mainLayer.height;
@@ -43,7 +128,9 @@ class Level {
         const isSolidTile = (x, y) => {
             if (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight) return false;
             const tile = this.mainLayer.getTileAt(x, y);
-            return tile && solidTiles.includes(tile.index);
+            const crumblingTile = this.crumblingLayer.getTileAt(x, y);
+            return (tile && solidTiles.includes(tile.index)) || 
+                   (crumblingTile && crumblingTile.index !== -1);
         };
         
         for (let y = 0; y < mapHeight; y++) {
@@ -94,18 +181,6 @@ class Level {
                 });
             }
         }
-    }
-
-    update() {
-        // Level update logic to be implemented
-    }
-
-    checkForCompletion() {
-        // To be implemented
-    }
-
-    resetLevel() {
-        // To be implemented
     }
 }
 

@@ -43,7 +43,6 @@ class GameManager extends Phaser.Scene {
 
     update(time, delta) {
         this.player.update();
-        this.currentLevel.update();
     }
 
     loadAssets() {//self-explanatory, loads all animations and tilemap
