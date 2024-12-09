@@ -167,8 +167,16 @@ class Level {
             
             platform.respawnTimer = this.scene.time.delayedCall(5000, () => {
                 platform.visible = true;
-                this.crumblingLayer.putTileAt(262, platform.leftTile.x, platform.leftTile.y);
-                this.crumblingLayer.putTileAt(263, platform.rightTile.x, platform.rightTile.y);
+                
+                // Restore tiles
+                const leftTile = this.crumblingLayer.putTileAt(262, platform.leftTile.x, platform.leftTile.y);
+                const rightTile = this.crumblingLayer.putTileAt(263, platform.rightTile.x, platform.rightTile.y);
+                
+                // Update tile references and reset positions
+                platform.leftTile = leftTile;
+                platform.rightTile = rightTile;
+                platform.leftTile.pixelX = platform.originalLeftX;
+                platform.rightTile.pixelX = platform.originalRightX;
                 
                 // Restore collision
                 platform.collisionBody.collisionFilter.category = 0x0001;
