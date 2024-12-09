@@ -188,7 +188,7 @@ const config = {
     physics: {
         default: 'matter',
         matter: {
-            gravity: { y: 2 },
+            gravity: { y: 1.2 },
             debug: {
                 showBodies: true,
                 showCollisions: true,

@@ -175,7 +175,7 @@ class Player {
     
 
     handleJump() {//Handles the jumping phyics and animation
-        const jumpForce = -9;
+        const jumpForce = -7;
 
         if (Phaser.Input.Keyboard.JustDown(this.scene.cursors.up) && !this.isCrouching) {
             if (this.canDoubleJump) {
