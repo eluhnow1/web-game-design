@@ -1,122 +1,5 @@
-// gameManager.js
 import Player from './player.js';
 import Level from './level.js';
-
-// UIManager Class
-class UIManager {
-    constructor(scene) {
-        this.scene = scene;
-        this.HUD = {};
-        this.pauseMenu = {};
-        this.musicVolume = 1;
-        this.soundEffectsVolume = 1;
-    }
-
-    renderHUD() {
-        // To be implemented
-    }
-
-    showPauseMenu() {
-        // Implement logic to show pause menu
-        if (!this.pauseMenu.container) {
-            this.pauseMenu.container = this.scene.add.text(400, 300, 'Game Paused', {
-                font: '32px Arial',
-                fill: '#ffffff'
-            }).setOrigin(0.5, 0.5);
-        }
-        this.pauseMenu.container.setVisible(true);
-    }
-
-    hidePauseMenu() {
-        if (this.pauseMenu.container) {
-            this.pauseMenu.container.setVisible(false);
-        }
-    }
-
-    playMusic(track) {
-        // To be implemented
-    }
-
-    playSoundEffect(effect) {
-        // To be implemented
-    }
-
-    adjustMusicVolume(volume) {
-        // To be implemented
-    }
-
-    adjustSoundEffectsVolume(volume) {
-        // To be implemented
-    }
-}
-
-// Cannon Class
-class Cannon {
-    constructor(scene, x, y) {
-        this.scene = scene;
-        this.x = x;
-        this.y = y;
-        this.cannon = null;
-        this.cannonballs = [];
-        this.fireCooldown = false;
-    }
-
-    create() {
-        // Add cannon image to the scene
-        this.cannon = this.scene.add.image(this.x, this.y, 'cannon');
-        
-        // Add the cannon to the Matter physics world and make it static
-        this.scene.matter.add.gameObject(this.cannon, { isStatic: true, label: 'cannon' });
-        this.cannon.setOrigin(0.5, 0.5);
-        this.cannon.setScale(0.5); // Adjust scale to make the cannon smaller
-
-        // Set up a timed event to fire cannonballs every 2 seconds
-        this.scene.time.addEvent({
-            delay: 2000,
-            callback: this.fire,
-            callbackScope: this,
-            loop: true
-        });
-    }
-
-    fire() {
-        if (this.fireCooldown) return;
-        this.fireCooldown = true;
-
-        // Create a cannonball at the cannon's position
-        const cannonball = this.scene.matter.add.image(this.x, this.y, 'cannonball', null, {
-            label: 'cannonball',
-            restitution: 0.5,
-            frictionAir: 0.02
-        });
-        cannonball.setCircle(cannonball.width * 0.5); // Specify radius for accurate collision
-        cannonball.setScale(0.5); // Adjust scale as needed
-
-        // Set initial velocity (adjust as necessary for gameplay)
-        const velocityX = Phaser.Math.Between(-5, 5);
-        const velocityY = -10;
-        cannonball.setVelocity(velocityX, velocityY);
-
-        this.cannonballs.push(cannonball);
-
-        // Reset the fire cooldown after 0.5 seconds
-        this.scene.time.delayedCall(500, () => {
-            this.fireCooldown = false;
-        });
-    }
-
-    update() {
-        // Iterate through cannonballs and remove those that are off-screen
-        this.cannonballs.forEach((cannonball, index) => {
-            // Use game config height for accurate boundary
-            const gameHeight = this.scene.sys.game.config.height;
-            if (cannonball.y > gameHeight) {
-                cannonball.destroy();
-                this.cannonballs.splice(index, 1);
-            }
-        });
-    }
-}
 
 // Main Game Manager Class
 class GameManager extends Phaser.Scene {
@@ -125,7 +8,6 @@ class GameManager extends Phaser.Scene {
         this.currentLevel = null;
         this.player = null;
         this.UIManager = null;
-        this.cannon = null;
         this.gameState = 'playing';
         this.cursors = null;
     }
@@ -134,14 +16,12 @@ class GameManager extends Phaser.Scene {
         this.loadAssets();
     }
 
-    create() { // This function sets frequently used variables and handles player collision with the ground (including animations)
-        this.UIManager = new UIManager(this);
+    create() {//This function just sets some frequently used variables and handles player collision with the ground (including animations)
         this.currentLevel = new Level(this);
         this.player = new Player(this, 400, 400);
-        this.cannon = new Cannon(this, 800, 500); // Ensure (800, 500) is within the visible camera area
+        this.UIManager = new UIManager(this);
         this.setupControls();
         this.currentLevel.create();
-        this.cannon.create();
 
         // Ground collision detection
         this.matter.world.on('collisionstart', (event) => {
@@ -159,17 +39,13 @@ class GameManager extends Phaser.Scene {
                 }
             });
         });
-
-        // Optional: Adjust camera zoom for testing visibility
-        // Comment out or adjust after confirming cannonballs are visible
-        this.cameras.main.setZoom(1);
     }
 
     update(time, delta) {
         this.player.update();
     }
 
-    loadAssets() { // Loads all animations and tilemap
+    loadAssets() {//self-explanatory, loads all animations and tilemap
         // Load sprite sheets
         this.load.spritesheet('idle', './assets/character-sprite-sheets/idle.png', { 
             frameWidth: 100, frameHeight: 64 
@@ -199,10 +75,6 @@ class GameManager extends Phaser.Scene {
             frameWidth: 100, frameHeight: 64 
         });
 
-        // Load cannon assets
-        this.load.image('cannon', './assets/mechanics/cannon-still.png');
-        this.load.image('cannonball', './assets/mechanics/cannonball.png');
-
         // Load tilemap
         this.load.tilemapTiledJSON('map', './assets/tilemap.json');
 
@@ -225,7 +97,7 @@ class GameManager extends Phaser.Scene {
         bgGraphics.destroy();
     }
 
-    setupControls() { // Sets up keybinds
+    setupControls() {//Sets up keybinds
         this.cursors = this.input.keyboard.createCursorKeys();
         
         this.input.keyboard.on('keydown-SPACE', () => {
@@ -245,14 +117,6 @@ class GameManager extends Phaser.Scene {
                 this.player.endCrouch();
             }
         });
-
-        this.input.keyboard.on('keydown-P', () => {
-            if (this.gameState === 'playing') {
-                this.pauseGame();
-            } else if (this.gameState === 'paused') {
-                this.resumeGame();
-            }
-        });
     }
 
     startGame() {
@@ -264,15 +128,11 @@ class GameManager extends Phaser.Scene {
     }
 
     pauseGame() {
-        this.gameState = 'paused';
-        this.scene.pause();
-        this.UIManager.showPauseMenu();
+        // To be implemented
     }
 
     resumeGame() {
-        this.gameState = 'playing';
-        this.scene.resume();
-        this.UIManager.hidePauseMenu();
+        // To be implemented
     }
 
     endGame() {
@@ -280,7 +140,42 @@ class GameManager extends Phaser.Scene {
     }
 }
 
-// Configures the physics engine and window size for the game
+// UIManager Class
+class UIManager {
+    constructor(scene) {
+        this.scene = scene;
+        this.HUD = {};
+        this.pauseMenu = {};
+        this.musicVolume = 1;
+        this.soundEffectsVolume = 1;
+    }
+
+    renderHUD() {
+        // To be implemented
+    }
+
+    showPauseMenu() {
+        // To be implemented
+    }
+
+    playMusic(track) {
+        // To be implemented
+    }
+
+    playSoundEffect(effect) {
+        // To be implemented
+    }
+
+    adjustMusicVolume(volume) {
+        // To be implemented
+    }
+
+    adjustSoundEffectsVolume(volume) {
+        // To be implemented
+    }
+}
+
+//Configures the physics engine and window size for the game
 const config = {
     type: Phaser.AUTO,
     scale: {
@@ -315,5 +210,3 @@ const config = {
 
 // Start the game
 const game = new Phaser.Game(config);
-
-export default GameManager;
