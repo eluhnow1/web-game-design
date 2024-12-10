@@ -448,10 +448,12 @@
 2. **Level Design**
    - Developed tilemap for first level
    - Implemented foreground tile collision system
+   - Implemented cannon
 
 3. **Development Progress**
    - Extensive debugging completed
    - Core systems functional
+
 
 ## 🚧 Pending Tasks
 
