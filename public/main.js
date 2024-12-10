@@ -166,11 +166,7 @@ class GameManager extends Phaser.Scene {
     }
 
     update(time, delta) {
-        if (this.gameState === 'playing') {
-            this.player.update();
-            this.currentLevel.update();
-            this.cannon.update();
-        }
+        this.player.update();
     }
 
     loadAssets() { // Loads all animations and tilemap
@@ -297,7 +293,7 @@ const config = {
     physics: {
         default: 'matter',
         matter: {
-            gravity: { y: 2 },
+            gravity: { y: 1.2 },
             debug: {
                 showBodies: true,
                 showCollisions: true,
