@@ -1,12 +1,13 @@
-const PLAYER_SIZE = 32;
-const PLAYER_CROUCH_SIZE = 16;
+const PLAYER_SIZE = 30;
+const PLAYER_CROUCH_SIZE = 12;
 const MAX_NORMAL_SPEED = 6;
 const MAX_CROUCH_SPEED = 3;
 const WORLD_WIDTH = 1600;
 const WORLD_HEIGHT = 3200;
+const TILE_SIZE = 16;
 
 class Player {
-    constructor(scene, x, y) {//sets up the attributes of the player and how it interacts with things
+    constructor(scene, x, y) {
         this.scene = scene;
         this.sprite = scene.matter.add.sprite(x, y, 'idle', null, {
             friction: 0.001,
@@ -17,20 +18,26 @@ class Player {
             label: 'player',
             inertia: Infinity,
             sleepThreshold: -1,
+            angle: 0,
+            torque: 0,
+            angularVelocity: 0,
             collisionFilter: {
                 category: 0x0002,
-                mask: 0x0001
+                mask: 0x000D
             },
             shape: {
                 type: 'rectangle',
-                width: 20,
-                height: PLAYER_SIZE
+                width: 28,
+                height: PLAYER_SIZE*2
             }
         });
-
+    
         this.setupPhysics();
         this.setupAnimations();
         this.initializeState();
+        this.isOnLadder = false;
+        this.canClimbLadder = false;
+        this.climbSpeed = 1.5;
     }
 
     initializeState() {//just initializing a bunch of important booleans
@@ -42,17 +49,30 @@ class Player {
         this.facing = 'right';
         this.isCrouching = false;
         this.isTransitioningCrouch = false;
+        this.abilities = {
+            moveRight: true,
+            moveLeft: false,
+            crouch: false,
+            jump: false,
+            dash: false,
+            doubleJump: false,
+            wallJump: false
+        };
+        this.preventNextJump = false;
     }
 
-    setupPhysics() {//more attribute initialization
+    setupPhysics() {
         this.sprite.setBounce(0);
         this.sprite.setFriction(0.001);
         this.sprite.setFixedRotation();
         this.sprite.body.collisionFilter.group = -1;
         this.sprite.body.sleepThreshold = -1;
         this.sprite.setFixedRotation(true);
-        this.sprite.setOrigin(0.5, 0.75);
+        
+        this.sprite.setOrigin(0.5, 0.5);
+        
         this.sprite.setScale(0.5);
+        this.sprite.body.collisionFilter.mask = 0x001D;
     }
 
     setupAnimations() {//creates the animations from sprite sheets
@@ -119,10 +139,20 @@ class Player {
             repeat: -1
         });
 
+        this.scene.anims.create({
+            key: 'ladder-climb',
+            frames: this.scene.anims.generateFrameNumbers('ladder-climb', { start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
         this.sprite.play('idle');
     }
 
     update() {
+        this.sprite.setRotation(0);
+        this.sprite.body.angle = 0;
+        this.sprite.body.angularVelocity = 0;
         this.handleMovement();
         this.handleJump();
         this.constrainToWorld();
@@ -130,38 +160,47 @@ class Player {
     }
 
     handleMovement() {
-        const normalSpeed = 2; // Default speed for normal movement
-        const crouchSpeed = 1; // Speed for crouching movement
+        if (this.isOnLadder) {
+            this.sprite.setVelocityX(0);
+            return;
+        }
+        const normalSpeed = 2;
+        const crouchSpeed = 1;
         const speed = this.isCrouching ? crouchSpeed : normalSpeed;
         const maxSpeed = this.isCrouching ? MAX_CROUCH_SPEED : MAX_NORMAL_SPEED;
     
         this.sprite.setRotation(0);
     
-        // Movement input is detected
-        if ((this.scene.cursors.left.isDown || this.scene.cursors.right.isDown) && !this.isDashing) {
-            const movingLeft = this.scene.cursors.left.isDown;
-            const movingRight = this.scene.cursors.right.isDown;
-    
-            const direction = movingLeft ? -1 : 1;
-            const newVelocityX = Phaser.Math.Clamp(direction * speed, -maxSpeed, maxSpeed);
+        // Check movement abilities
+        if (this.scene.cursors.right.isDown && this.abilities.moveRight && !this.isDashing) {
+            const newVelocityX = Phaser.Math.Clamp(speed, -maxSpeed, maxSpeed);
             this.sprite.setVelocityX(newVelocityX);
-    
-            this.sprite.flipX = movingLeft;
-            this.facing = movingLeft ? 'left' : 'right';
-    
-            // Play walking animation if moving
+            this.sprite.flipX = false;
+            this.facing = 'right';
+            
             if (!this.isTransitioningCrouch && Math.abs(this.sprite.body.velocity.x) > 0.1) {
                 const anim = this.isCrouching ? 'crouch-walk' : 'walk';
                 if (this.sprite.anims.currentAnim?.key !== anim) {
                     this.sprite.play(anim, true);
                 }
             }
-        } 
-        // No movement input, so stop immediately
+        }
+        else if (this.scene.cursors.left.isDown && this.abilities.moveLeft && !this.isDashing) {
+            const newVelocityX = Phaser.Math.Clamp(-speed, -maxSpeed, maxSpeed);
+            this.sprite.setVelocityX(newVelocityX);
+            this.sprite.flipX = true;
+            this.facing = 'left';
+            
+            if (!this.isTransitioningCrouch && Math.abs(this.sprite.body.velocity.x) > 0.1) {
+                const anim = this.isCrouching ? 'crouch-walk' : 'walk';
+                if (this.sprite.anims.currentAnim?.key !== anim) {
+                    this.sprite.play(anim, true);
+                }
+            }
+        }
         else if (!this.isDashing) {
-            this.sprite.setVelocityX(0); // Stop movement immediately when no keys are pressed
-    
-            // Idle animation if no movement
+            this.sprite.setVelocityX(0);
+            
             if (!this.isTransitioningCrouch &&
                 !this.sprite.anims.currentAnim?.key.includes('jump') &&
                 Math.abs(this.sprite.body.velocity.x) < 0.1) {
@@ -171,20 +210,68 @@ class Player {
                 }
             }
         }
-    }
-    
+    } 
 
-    handleJump() {//Handles the jumping phyics and animation
-        const jumpForce = -7;
+    handleJump() {
+        
+        this.checkLadderCollision();
+        
+        if (this.canClimbLadder) {
+            if (this.scene.cursors.up.isDown) {
+                this.isOnLadder = true;
+                this.sprite.setVelocityY(-this.climbSpeed);
+                
+                // Start or resume climbing animation if it's not already playing
+                if (this.sprite.anims.currentAnim?.key !== 'ladder-climb' || 
+                    this.sprite.anims.isPaused) {
+                    this.sprite.play('ladder-climb');
+                }
+            } else if (this.scene.cursors.down.isDown) {
+                this.isOnLadder = true;
+                this.sprite.setVelocityY(this.climbSpeed);
+                
+                // Start or resume climbing animation if it's not already playing
+                if (this.sprite.anims.currentAnim?.key !== 'ladder-climb' || 
+                    this.sprite.anims.isPaused) {
+                    this.sprite.play('ladder-climb');
+                }
+            } else if (this.isOnLadder) {
+                // Stop vertical movement and pause animation on current frame
+                this.sprite.setVelocityY(0);
+                if (this.sprite.anims.currentAnim?.key === 'ladder-climb') {
+                    this.sprite.anims.pause();
+                } else {
+                    this.sprite.anims.play('ladder-climb', true);
+                    this.sprite.anims.pause();
+                }
+            }
+            return;
+        }
+        
+        // If we were on a ladder but aren't anymore
+        if (this.isOnLadder) {
+            this.isOnLadder = false;
+            // Don't allow immediate jump when leaving ladder while holding up
+            if (this.scene.cursors.up.isDown) {
+                this.preventNextJump = true;
+            }
+        }
+        if (this.preventNextJump) {
+            this.preventNextJump = false;
+            return;
+        }
+        if (!this.abilities.jump) return;
+    
+        const jumpForce = -6;
 
         if (Phaser.Input.Keyboard.JustDown(this.scene.cursors.up) && !this.isCrouching) {
-            if (this.canDoubleJump) {
+            if (this.canDoubleJump && this.abilities.doubleJump) {
                 this.sprite.play('jump', true);
                 this.sprite.setVelocityY(jumpForce);
                 this.canDoubleJump = false;
             } else if (!this.hasDoubleJumped) {
                 this.sprite.play('jump', true);
-                this.sprite.setVelocityY(jumpForce * 0.8);
+                this.sprite.setVelocityY(jumpForce);
                 this.hasDoubleJumped = true;
             }
         }
@@ -224,47 +311,107 @@ class Player {
         }
     }
 
-    startCrouch() {//Handles the player crouching with shift
-        if (this.isTransitioningCrouch || this.isCrouching) return;
-
+    startCrouch() {
+        if (!this.abilities.crouch || this.isTransitioningCrouch || this.isCrouching) return;
+    
         this.isTransitioningCrouch = true;
-
-        const scaleFactor = PLAYER_CROUCH_SIZE / PLAYER_SIZE;
-        this.sprite.body.parts.forEach((part) => {
-            if (part !== this.sprite.body) {
-                this.scene.matter.body.scale(part, 1, scaleFactor);
+    
+        // Store current velocity and position
+        const currentVelX = this.sprite.body.velocity.x;
+        const currentVelY = this.sprite.body.velocity.y;
+        const currentBottom = this.sprite.y; // Store the current bottom position
+    
+        // Calculate the new center position for the physics body
+        const newY = currentBottom + (PLAYER_CROUCH_SIZE/2)-2;
+    
+        // Create new physics body
+        const newBody = this.scene.matter.bodies.rectangle(
+            this.sprite.x,
+            newY,
+            14,
+            PLAYER_CROUCH_SIZE,
+            {
+                friction: 0.001,
+                frictionStatic: 0.05,
+                frictionAir: 0.01,
+                restitution: 0,
+                label: 'player',
+                inertia: Infinity,
+                collisionFilter: {
+                    category: 0x0002,
+                    mask: 0x000D
+                }
             }
-        });
-
-        this.sprite.setPosition(this.sprite.x, this.sprite.y + (PLAYER_SIZE - PLAYER_CROUCH_SIZE) / 2);
-
+        );
+    
+        // Update the sprite's body
+        this.scene.matter.body.setVertices(this.sprite.body, newBody.vertices);
+        
+        // Update sprite position and origin for crouching
+        this.sprite.setOrigin(0.5, 0.75);
+        this.sprite.setPosition(this.sprite.x, newY);
+        
+        // Restore velocity
+        this.sprite.setVelocity(currentVelX, currentVelY);
+    
+        // Play animation
         this.sprite.play('crouch-transition').once('animationcomplete', () => {
             this.isCrouching = true;
             this.isTransitioningCrouch = false;
             this.sprite.play('crouch-idle');
         });
     }
-
-    endCrouch() {//Handles the player ending their crouch
+    
+    endCrouch() {
         if (this.isTransitioningCrouch || !this.isCrouching) return;
-
+    
         this.isTransitioningCrouch = true;
-
-        const scaleFactor = PLAYER_SIZE / PLAYER_CROUCH_SIZE;
-        this.sprite.body.parts.forEach((part) => {
-            if (part !== this.sprite.body) {
-                this.scene.matter.body.scale(part, 1, scaleFactor);
+    
+        // Store current velocity and position
+        const currentVelX = this.sprite.body.velocity.x;
+        const currentVelY = this.sprite.body.velocity.y;
+        const currentBottom = this.sprite.y + PLAYER_CROUCH_SIZE/2; // Get current bottom position
+    
+        // Calculate the new center position for the physics body
+        const newY = currentBottom - PLAYER_SIZE/2;
+    
+        // Create new physics body
+        const newBody = this.scene.matter.bodies.rectangle(
+            this.sprite.x,
+            newY,
+            14, 
+            PLAYER_SIZE,
+            {
+                friction: 0.001,
+                frictionStatic: 0.05,
+                frictionAir: 0.01,
+                restitution: 0,
+                label: 'player',
+                inertia: Infinity,
+                collisionFilter: {
+                    category: 0x0002,
+                    mask: 0x000D
+                }
             }
-        });
-
-        this.sprite.setPosition(this.sprite.x, this.sprite.y - (PLAYER_SIZE - PLAYER_CROUCH_SIZE) / 2);
-
+        );
+    
+        // Update the sprite's body
+        this.scene.matter.body.setVertices(this.sprite.body, newBody.vertices);
+        
+        // Update sprite position and origin for standing
+        this.sprite.setOrigin(0.5, 0.5);
+        this.sprite.setPosition(this.sprite.x, currentBottom);
+        
+        // Restore velocity
+        this.sprite.setVelocity(currentVelX, currentVelY);
+    
+        // Play animation
         this.sprite.play('crouch-transition', true).once('animationcomplete', () => {
             this.isCrouching = false;
             this.isTransitioningCrouch = false;
             this.canDoubleJump = true;
             this.hasDoubleJumped = false;
-
+    
             if (!this.sprite.body.velocity.x) {
                 this.sprite.play('idle');
             } else {
@@ -272,8 +419,18 @@ class Player {
             }
         });
     }
+    
+    // Add this helper method to get the proper bottom position for collision checks
+    getBottomPosition() {
+        if (this.isCrouching) {
+            return this.sprite.y + PLAYER_CROUCH_SIZE/2;
+        } else {
+            return this.sprite.y;  // Since origin is at bottom when standing
+        }
+    }
 
     dash() {//Handles the dash physics
+        if (!this.abilities.dash) return;
         const dashSpeed = 8;
         const dashDuration = 200;
         const dashDeceleration = 0.8;
@@ -338,6 +495,32 @@ class Player {
     resetJump() {
         this.canDoubleJump = true;
         this.hasDoubleJumped = false;
+    }
+
+    checkLadderCollision() {
+        const bodies = this.scene.matter.world.localWorld.bodies;
+        this.canClimbLadder = false;
+        
+        for (let body of bodies) {
+            if (body.label === 'ladder') {
+                const overlap = this.scene.matter.overlap(this.sprite.body, body);
+                if (overlap) {
+                    this.canClimbLadder = true;
+                    // Check if player is at top of ladder
+                    const playerBottom = this.sprite.y + PLAYER_SIZE/2;
+                    const ladderTop = body.position.y - TILE_SIZE/2;
+                    
+                    if (playerBottom <= ladderTop + 2) {
+                        this.canClimbLadder = false;
+                    }
+                    break;
+                }
+            }
+        }
+        
+        if (!this.canClimbLadder) {
+            this.isOnLadder = false;
+        }
     }
 }
 export default Player;

@@ -75,6 +75,26 @@ class GameManager extends Phaser.Scene {
             frameWidth: 100, frameHeight: 64 
         });
 
+        this.load.spritesheet('spring', './assets/mechanics/spring.png', { 
+            frameWidth: 230, 
+            frameHeight: 160,
+            endFrame: 7     
+        });
+        this.load.spritesheet('cannon', './assets/mechanics/cannon-shooting.png', {
+            frameWidth: 1024,
+            frameHeight: 1024,
+            endFrame: 4 
+        });
+
+        this.load.spritesheet('cannonball', './assets/mechanics/cannonball.png', {
+            frameWidth: 160,
+            frameHeight: 112,
+            endFrame: 1
+        });
+        this.load.spritesheet('ladder-climb', './assets/character-sprite-sheets/ladder-climb.png', { 
+            frameWidth: 100, frameHeight: 64 
+        });
+
         // Load tilemap
         this.load.tilemapTiledJSON('map', './assets/tilemap.json');
 
@@ -95,6 +115,15 @@ class GameManager extends Phaser.Scene {
         bgGraphics.fillCircle(gridSize, gridSize, 2);
         bgGraphics.generateTexture('grid', gridSize, gridSize);
         bgGraphics.destroy();
+
+        this.load.image('moveLeft-pickup', './assets/pickups/left-pickup.png');
+        this.load.image('crouch-pickup', './assets/pickups/crouch-pickup.png');
+        this.load.image('jump-pickup', './assets/pickups/jump-pickup.png');
+        this.load.image('dash-pickup', './assets/pickups/dash-pickup.png');
+        this.load.image('doubleJump-pickup', './assets/pickups/doublejump-pickup.png');
+        this.load.image('wallJump-pickup', './assets/pickups/walljump-pickup.png');
+        this.load.image('cage', 'assets/mechanics/cage.png');
+        this.load.image('key', 'assets/mechanics/key.png');
     }
 
     setupControls() {//Sets up keybinds
@@ -188,13 +217,13 @@ const config = {
     physics: {
         default: 'matter',
         matter: {
-            gravity: { y: 1.2 },
-            debug: {
-                showBodies: true,
-                showCollisions: true,
-                showVelocity: true,
-                showBounds: true
-            },
+            gravity: { y: 1 },
+            // debug: {
+            //     showBodies: true,
+            //     showCollisions: true,
+            //     showVelocity: true,
+            //     showBounds: true
+            // },
             setBounds: true,
             positionIterations: 6,
             velocityIterations: 4,

@@ -10,6 +10,307 @@ class Level {
         this.mainLayer = null;
         this.crumblingLayer = null;
         this.crumblingPlatforms = new Map();
+        this.pickups = new Map();
+        this.springs = [];
+        this.cannons = [];
+        this.cannonballs = [];
+        this.cages = [];
+        this.keys = [];
+    }
+
+    createSpring(x, y) {
+        // Create spring sprite
+        const spring = this.scene.matter.add.sprite(x, y, 'spring', 0, {
+            isStatic: true,
+            label: 'spring',
+            collisionFilter: {
+                category: 0x0001,
+                mask: 0x0002
+            }
+        });
+    
+        // Scale the spring to match your tile size (32x32)
+        spring.setScale(32/230); // This will scale it down to roughly tile size
+    
+        // Create spring animation
+        if (!this.scene.anims.exists('spring-bounce')) {
+            this.scene.anims.create({
+                key: 'spring-bounce',
+                frames: this.scene.anims.generateFrameNumbers('spring', { start: 0, end: 7 }),
+                frameRate: 24,
+                repeat: 0
+            });
+        }
+    
+        // Return to first frame when animation completes
+        spring.on('animationcomplete', () => {
+            spring.setFrame(0);
+        });
+    
+        this.springs.push(spring);
+        return spring;
+    }
+
+    handleSpringCollision(player, spring) {
+        // Play spring animation
+        spring.play('spring-bounce');
+        
+        // Launch player upward with more force than a regular jump
+        player.setVelocityY(-7); // Adjust this value to control launch height
+    }
+
+    createCannon(x, y, facingLeft = false) {
+        const cannon = this.scene.matter.add.sprite(x, y, 'cannon', 0, {
+            isStatic: true,
+            label: 'cannon',
+            collisionFilter: {
+                category: 0x0001,
+                mask: 0x0002
+            },
+            shape: {
+                type: 'rectangle',
+                width: 320,
+                height: 320
+            }
+        });
+
+        cannon.setScale(32/1024); // Scale to 16x16 pixels
+        cannon.flipX = facingLeft;
+        
+        // Create cannon animation if it doesn't exist
+        if (!this.scene.anims.exists('cannon-shoot')) {
+            this.scene.anims.create({
+                key: 'cannon-shoot',
+                frames: this.scene.anims.generateFrameNumbers('cannon', { start: 0, end: 4 }),
+                frameRate: 12,
+                repeat: 0
+            });
+        }
+
+        // Create cannonball animation if it doesn't exist
+        if (!this.scene.anims.exists('cannonball-spin')) {
+            this.scene.anims.create({
+                key: 'cannonball-spin',
+                frames: this.scene.anims.generateFrameNumbers('cannonball', { start: 0, end: 1 }),
+                frameRate: 8,
+                repeat: -1
+            });
+        }
+
+        // Setup cannon shooting interval
+        this.scene.time.addEvent({
+            delay: 1000,
+            callback: () => this.shootCannon(cannon, facingLeft),
+            loop: true
+        });
+
+        this.cannons.push(cannon);
+        return cannon;
+    }
+
+    shootCannon(cannon, facingLeft) {
+        cannon.play('cannon-shoot').once('animationcomplete', () => {
+            const cannonball = this.scene.matter.add.sprite(
+                cannon.x + (facingLeft ? -20 : 20),
+                cannon.y,
+                'cannonball',
+                0,
+                {
+                    label: 'cannonball',
+                    collisionFilter: {
+                        category: 0x0004,  
+                        mask: 0x0003
+                    }
+                }
+            );
+    
+            cannonball.setScale(10/160);
+            cannonball.setStatic(false);
+         
+            const startY = cannonball.y;
+  
+            this.scene.events.on('update', () => {
+                if (cannonball && cannonball.body) {
+                    cannonball.y = startY;  // Force y position to stay constant
+                    cannonball.setVelocityX(facingLeft ? -5 : 5);
+                }
+            });
+
+            cannonball.play('cannonball-spin');
+    
+            // Handle cannonball collisions
+            this.scene.matter.world.on('collisionstart', (event) => {
+                event.pairs.forEach((pair) => {
+                    const bodyA = pair.bodyA;
+                    const bodyB = pair.bodyB;
+                    
+                    if (bodyA.label === 'cannonball' || bodyB.label === 'cannonball') {
+                        const ball = bodyA.label === 'cannonball' ? bodyA.gameObject : bodyB.gameObject;
+                        const other = bodyA.label === 'cannonball' ? bodyB : bodyA;
+                        
+                        if (other.label === 'player') {
+                            // Reset player position
+                            this.scene.player.sprite.setPosition(450, 660);
+                        }
+                        
+                        // Destroy cannonball in either case
+                        if (ball && ball.destroy) {
+                            ball.destroy();
+                        }
+                    }
+                });
+            });
+    
+            this.cannonballs.push(cannonball);
+        });
+    }
+
+    handleKeyCollection(key) {
+        // Find the nearest cage
+        let nearestCage = null;
+        let shortestDistance = Infinity;
+        
+        for (const cage of this.cages) {
+            const distance = Phaser.Math.Distance.Between(key.x, key.y, cage.x, cage.y);
+            if (distance < shortestDistance) {
+                shortestDistance = distance;
+                nearestCage = cage;
+            }
+        }
+    
+        if (nearestCage) {
+            // Create a quick flash effect
+            nearestCage.setTint(0xFFFFFF);
+            this.scene.time.delayedCall(100, () => {
+                try {
+                    // Simple sparkle effect without using particle system
+                    for (let i = 0; i < 5; i++) {
+                        const sparkle = this.scene.add.sprite(
+                            nearestCage.x + (Math.random() * 32 - 16),
+                            nearestCage.y + (Math.random() * 32 - 16),
+                            'key'
+                        );
+                        sparkle.setScale(0.2);
+                        
+                        // Fade out and destroy
+                        this.scene.tweens.add({
+                            targets: sparkle,
+                            alpha: 0,
+                            scale: 0,
+                            duration: 300,
+                            onComplete: () => sparkle.destroy()
+                        });
+                    }
+                    
+                    // Remove the cage and key
+                    this.cages = this.cages.filter(c => c !== nearestCage);
+                    this.keys = this.keys.filter(k => k !== key);
+                    nearestCage.destroy();
+                    key.destroy();
+                } catch (error) {
+                    console.error('Error in handleKeyCollection:', error);
+                }
+            });
+        }
+    }
+    
+    createCage(x, y) {
+        const cage = this.scene.matter.add.sprite(x, y, 'cage', null, {
+            isStatic: true,
+            label: 'cage',
+            collisionFilter: {
+                category: 0x0001,
+                mask: 0x0002
+            }
+        });
+    
+        // Adjust scale based on actual image size
+        cage.setScale(0.05);  // Adjust this value based on your sprite size
+        
+        this.cages.push(cage);
+        return cage;
+    }
+    
+    createKey(x, y) {
+        const key = this.scene.matter.add.sprite(x, y, 'key', null, {
+            isStatic: true,
+            isSensor: true,
+            label: 'key',
+            collisionFilter: {
+                category: 0x0008,
+                mask: 0x0002
+            }
+        });
+    
+        // Adjust scale based on actual image size
+        key.setScale(0.05);  // Adjust this value based on your sprite size
+    
+        // Add floating animation
+        this.scene.tweens.add({
+            targets: key,
+            y: y - 5,
+            duration: 1000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+    
+        this.keys.push(key);
+        return key;
+    }
+
+    createPickups() {
+        // Define pickup locations (x, y coordinates in pixels)
+        const pickupLocations = {
+            moveLeft: { x: 830, y: 655 },
+            crouch: { x: 860, y: 590 },
+            jump: { x: 50, y: 655 },
+            dash: { x: 860, y: 655 },
+            doubleJump: { x: 860, y: 350 },
+            wallJump: { x: 860, y: 270 }
+        };
+    
+        // Create each pickup
+        for (const [ability, location] of Object.entries(pickupLocations)) {
+            const sprite = this.scene.matter.add.sprite(
+                location.x,
+                location.y,
+                `${ability}-pickup`,
+                null,
+                {
+                    isStatic: true,
+                    isSensor: true,
+                    label: `pickup-${ability}`,
+                    collisionFilter: {
+                        category: 0x0008,  
+                        mask: 0x0002      
+                    }
+                }
+            );
+            sprite.setScale(0.1);
+            this.pickups.set(ability, sprite);
+        }
+    
+        // Add collision detection for pickups
+        this.scene.matter.world.on('collisionstart', (event) => {
+            event.pairs.forEach((pair) => {
+                const bodyA = pair.bodyA;
+                const bodyB = pair.bodyB;
+                
+                if (bodyA.label === 'player' || bodyB.label === 'player') {
+                    const pickup = bodyA.label.startsWith('pickup-') ? bodyA : 
+                                 bodyB.label.startsWith('pickup-') ? bodyB : null;
+                    
+                    if (pickup) {
+                        const ability = pickup.label.replace('pickup-', '');
+                        this.scene.player.abilities[ability] = true;
+                        this.pickups.get(ability).destroy();
+                        this.pickups.delete(ability);
+                    }
+                }
+            });
+        });
+
     }
 
     create() {
@@ -30,13 +331,112 @@ class Level {
         this.mainLayer.setCollisionByProperty({ collision: true });
         this.crumblingLayer.setCollisionByProperty({ collision: true });
         
-        // Initialize crumbling platform collision handling
         this.setupCrumblingPlatforms();
         this.createCollisionBodies();
+        this.createPickups();
+
+        laddersLayer.setCollisionByProperty({ collision: true });
+
+        // Create ladder bodies for collision detection
+        const ladderTiles = laddersLayer.getTilesWithin();
+        ladderTiles.forEach(tile => {
+            if (tile.index === 74) { // The ladder tile index from your tilemap
+                const ladderBody = this.scene.matter.add.rectangle(
+                    tile.pixelX + TILE_SIZE/2,
+                    tile.pixelY + TILE_SIZE/2,
+                    TILE_SIZE,
+                    TILE_SIZE,
+                    {
+                        isStatic: true,
+                        isSensor: true, // Make it a sensor so it doesn't block movement
+                        label: 'ladder',
+                        collisionFilter: {
+                            category: 0x0010, // New category for ladders
+                            mask: 0x0002 // Player category
+                        }
+                    }
+                );
+            }
+        });
     
+        // Create springs AFTER map creation
+        const springPositions = [
+            { x: 570, y: 660 },
+        ];
+    
+        springPositions.forEach(pos => {
+            this.createSpring(pos.x, pos.y);
+        });
+
+        //add cannons
+        const cannonPositions = [
+            { x: 24, y: 648, facingLeft: false },
+        ];
+    
+        cannonPositions.forEach(pos => {
+            this.createCannon(pos.x, pos.y, pos.facingLeft);
+        });
+
+
+        // Add some example cages and keys
+        const cagePositions = [
+            //{ x: 300, y: 648 },
+            // Add more cage positions as needed
+        ];
+
+        const keyPositions = [
+            //{ x: 200, y: 648 },
+            // Add more key positions as needed
+        ];
+
+        cagePositions.forEach(pos => {
+            this.createCage(pos.x, pos.y);
+        });
+
+        keyPositions.forEach(pos => {
+            this.createKey(pos.x, pos.y);
+        });
+
+        // Add collision handling for keys
+        this.scene.matter.world.on('collisionstart', (event) => {
+            event.pairs.forEach((pair) => {
+                const bodyA = pair.bodyA;
+                const bodyB = pair.bodyB;
+                
+                if (bodyA.label === 'player' || bodyB.label === 'player') {
+                    const key = bodyA.label === 'key' ? bodyA.gameObject : 
+                            bodyB.label === 'key' ? bodyB.gameObject : null;
+                    
+                    if (key) {
+                        this.handleKeyCollection(key);
+                    }
+                }
+            });
+        });
+    
+        // Setup camera
         this.scene.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
         this.scene.cameras.main.startFollow(this.scene.player.sprite, true, 0.2, 0.2);
         this.scene.cameras.main.setZoom(3.5);
+    
+        // Move collision handling here
+        this.scene.matter.world.on('collisionstart', (event) => {
+            event.pairs.forEach((pair) => {
+                const bodyA = pair.bodyA;
+                const bodyB = pair.bodyB;
+                
+                if (bodyA.label === 'player' || bodyB.label === 'player') {
+                    const spring = bodyA.label === 'spring' ? bodyA.gameObject : 
+                                 bodyB.label === 'spring' ? bodyB.gameObject : null;
+                    const player = bodyA.label === 'player' ? bodyA.gameObject : 
+                                 bodyB.label === 'player' ? bodyB.gameObject : null;
+                    
+                    if (spring && player) {
+                        this.handleSpringCollision(player, spring);
+                    }
+                }
+            });
+        });
     }
 
     setupCrumblingPlatforms() {
@@ -243,7 +643,11 @@ class Level {
                         strokeStyle: 'rgb(255, 0, 0)',
                         lineWidth: 1
                     },
-                    slop: 0
+                    slop: 0,
+                    collisionFilter: {
+                        category: 0x0001,  // Ground category
+                        mask: 0x0006      // Binary 0110, meaning it collides with player (0010) and cannonballs (0100)
+                    }
                 });
             }
         }
