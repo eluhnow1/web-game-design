@@ -219,12 +219,12 @@ const config = {
         default: 'matter',
         matter: {
             gravity: { y: 1 },
-            debug: {
-                showBodies: true,
-                showCollisions: true,
-                showVelocity: true,
-                showBounds: true
-            },
+            // debug: {
+            //     showBodies: true,
+            //     showCollisions: true,
+            //     showVelocity: true,
+            //     showBounds: true
+            // },
             setBounds: true,
             positionIterations: 6,
             velocityIterations: 4,
