@@ -18,7 +18,7 @@ class GameManager extends Phaser.Scene {
 
     create() {//This function just sets some frequently used variables and handles player collision with the ground (including animations)
         this.currentLevel = new Level(this);
-        this.player = new Player(this, 400, 400);
+        this.player = new Player(this, 450, 660);
         this.UIManager = new UIManager(this);
         this.setupControls();
         this.currentLevel.create();
@@ -124,6 +124,7 @@ class GameManager extends Phaser.Scene {
         this.load.image('wallJump-pickup', './assets/pickups/walljump-pickup.png');
         this.load.image('cage', 'assets/mechanics/cage.png');
         this.load.image('key', 'assets/mechanics/key.png');
+        this.load.image('star', './assets/mechanics/star.png');
     }
 
     setupControls() {//Sets up keybinds
@@ -218,12 +219,12 @@ const config = {
         default: 'matter',
         matter: {
             gravity: { y: 1 },
-            // debug: {
-            //     showBodies: true,
-            //     showCollisions: true,
-            //     showVelocity: true,
-            //     showBounds: true
-            // },
+            debug: {
+                showBodies: true,
+                showCollisions: true,
+                showVelocity: true,
+                showBounds: true
+            },
             setBounds: true,
             positionIterations: 6,
             velocityIterations: 4,

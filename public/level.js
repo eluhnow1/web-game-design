@@ -9,14 +9,87 @@ class Level {
         this.exit = null;
         this.mainLayer = null;
         this.crumblingLayer = null;
+        this.breakableLayer = null;
         this.crumblingPlatforms = new Map();
+        this.breakableBlocks = new Map();
         this.pickups = new Map();
         this.springs = [];
         this.cannons = [];
         this.cannonballs = [];
         this.cages = [];
         this.keys = [];
+        this.star = null;
+        this.winText = null;
+        this.resetButton = null;
+        this.playAgainButton = null;
+        this.spawnPoint = { x: 450, y: 660 };
     }
+
+    createStar(x, y) {
+        this.star = this.scene.matter.add.sprite(x, y, 'star', null, {
+            isStatic: true,
+            isSensor: true,
+            label: 'star',
+            collisionFilter: {
+                category: 0x0008,
+                mask: 0x0002
+            }
+        });
+        
+        this.star.setScale(0.1);
+        
+        // Add floating animation
+        this.scene.tweens.add({
+            targets: this.star,
+            y: y - 5,
+            duration: 1000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+
+        // Add glow effect
+        this.scene.tweens.add({
+            targets: this.star,
+            alpha: 0.7,
+            duration: 1500,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+    }
+
+    
+
+    showWinScreen() {
+        // Create semi-transparent black overlay
+        const overlay = this.scene.add.rectangle(
+            0, 0,
+            this.scene.cameras.main.width,
+            this.scene.cameras.main.height,
+            0x000000, 0.7
+        );
+        overlay.setScrollFactor(0);
+        overlay.setOrigin(0);
+        
+        // Add "You Win!" text
+        this.winText = this.scene.add.text(
+            this.scene.cameras.main.width / 2,
+            this.scene.cameras.main.height / 2 - 50,
+            'You Win!',
+            {
+                fontSize: '48px',
+                fontWeight: 'bold',
+                color: '#ffffff'
+            }
+        );
+        this.winText.setScrollFactor(0);
+        this.winText.setOrigin(0.5);
+        
+    
+    }
+
+    
 
     createSpring(x, y) {
         // Create spring sprite
@@ -137,6 +210,7 @@ class Level {
             });
 
             cannonball.play('cannonball-spin');
+            cannonball.flipX = facingLeft;
     
             // Handle cannonball collisions
             this.scene.matter.world.on('collisionstart', (event) => {
@@ -165,74 +239,21 @@ class Level {
         });
     }
 
-    handleKeyCollection(key) {
-        // Find the nearest cage
-        let nearestCage = null;
-        let shortestDistance = Infinity;
-        
-        for (const cage of this.cages) {
-            const distance = Phaser.Math.Distance.Between(key.x, key.y, cage.x, cage.y);
-            if (distance < shortestDistance) {
-                shortestDistance = distance;
-                nearestCage = cage;
-            }
-        }
+    handleKeyAndCageInteraction(player, key) {
+        // Destroy the key
+        key.destroy();
     
-        if (nearestCage) {
-            // Create a quick flash effect
-            nearestCage.setTint(0xFFFFFF);
-            this.scene.time.delayedCall(100, () => {
-                try {
-                    // Simple sparkle effect without using particle system
-                    for (let i = 0; i < 5; i++) {
-                        const sparkle = this.scene.add.sprite(
-                            nearestCage.x + (Math.random() * 32 - 16),
-                            nearestCage.y + (Math.random() * 32 - 16),
-                            'key'
-                        );
-                        sparkle.setScale(0.2);
-                        
-                        // Fade out and destroy
-                        this.scene.tweens.add({
-                            targets: sparkle,
-                            alpha: 0,
-                            scale: 0,
-                            duration: 300,
-                            onComplete: () => sparkle.destroy()
-                        });
-                    }
-                    
-                    // Remove the cage and key
-                    this.cages = this.cages.filter(c => c !== nearestCage);
-                    this.keys = this.keys.filter(k => k !== key);
-                    nearestCage.destroy();
-                    key.destroy();
-                } catch (error) {
-                    console.error('Error in handleKeyCollection:', error);
-                }
-            });
+        // Find and destroy the corresponding cage
+        const correspondingCage = this.cages.find(cage => !cage.isDestroyed);
+        if (correspondingCage) {
+            correspondingCage.destroy();
+            correspondingCage.isDestroyed = true;
         }
     }
     
-    createCage(x, y) {
-        const cage = this.scene.matter.add.sprite(x, y, 'cage', null, {
-            isStatic: true,
-            label: 'cage',
-            collisionFilter: {
-                category: 0x0001,
-                mask: 0x0002
-            }
-        });
-    
-        // Adjust scale based on actual image size
-        cage.setScale(0.05);  // Adjust this value based on your sprite size
-        
-        this.cages.push(cage);
-        return cage;
-    }
-    
-    createKey(x, y) {
-        const key = this.scene.matter.add.sprite(x, y, 'key', null, {
+    createKeyAndCage(xKey, yKey, xCage, yCage) {
+        // Create key
+        const key = this.scene.matter.add.sprite(xKey, yKey, 'key', null, {
             isStatic: true,
             isSensor: true,
             label: 'key',
@@ -242,21 +263,118 @@ class Level {
             }
         });
     
-        // Adjust scale based on actual image size
-        key.setScale(0.05);  // Adjust this value based on your sprite size
+        key.setScale(0.05);
+        this.keys.push(key);
     
-        // Add floating animation
+        // Add floating animation to key
         this.scene.tweens.add({
             targets: key,
-            y: y - 5,
+            y: yKey - 5,
             duration: 1000,
             yoyo: true,
             repeat: -1,
             ease: 'Sine.easeInOut'
         });
     
-        this.keys.push(key);
-        return key;
+        // Create cage
+        const cage = this.scene.matter.add.sprite(xCage, yCage, 'cage', null, {
+            isStatic: true,
+            label: 'cage',
+            collisionFilter: {
+                category: 0x0001,
+                mask: 0x0002
+            }
+        });
+    
+        cage.setScale(0.05);
+        cage.isDestroyed = false;
+        this.cages.push(cage);
+    
+        // Add collision detection for the key
+        this.scene.matter.world.on('collisionstart', (event) => {
+            event.pairs.forEach((pair) => {
+                const bodyA = pair.bodyA;
+                const bodyB = pair.bodyB;
+    
+                if (bodyA.label === 'player' || bodyB.label === 'player') {
+                    const collidedKey = bodyA.label === 'key' ? bodyA.gameObject : 
+                                       bodyB.label === 'key' ? bodyB.gameObject : null;
+    
+                    if (collidedKey === key) {
+                        this.handleKeyAndCageInteraction(this.scene.player.sprite, collidedKey);
+                    }
+                }
+            });
+        });
+    }
+
+    setupBreakableBlocks() {
+        const breakableTiles = this.breakableLayer.getTilesWithin();
+        
+        breakableTiles.forEach(tile => {
+            if (tile.index !== -1) {  // If it's not an empty tile
+                // Create collision body for the breakable block
+                const collisionBody = this.scene.matter.add.rectangle(
+                    tile.pixelX + TILE_SIZE/2,
+                    tile.pixelY + TILE_SIZE/2,
+                    TILE_SIZE,
+                    TILE_SIZE,
+                    {
+                        isStatic: true,
+                        friction: 0.5,
+                        label: 'breakable',
+                        collisionFilter: {
+                            category: 0x0001,
+                            mask: 0x0002
+                        }
+                    }
+                );
+
+                // Store the tile and body information
+                this.breakableBlocks.set(`${tile.x},${tile.y}`, {
+                    tile: tile,
+                    body: collisionBody
+                });
+            }
+        });
+    }
+
+    breakBlock(blockBody) {
+        // Find the corresponding tile based on body position
+        const tileX = Math.floor(blockBody.position.x / TILE_SIZE);
+        const tileY = Math.floor(blockBody.position.y / TILE_SIZE);
+        const key = `${tileX},${tileY}`;
+        const blockInfo = this.breakableBlocks.get(key);
+
+        if (blockInfo) {
+            // Remove the tile
+            this.breakableLayer.removeTileAt(blockInfo.tile.x, blockInfo.tile.y);
+            
+            // Remove the collision body
+            this.scene.matter.world.remove(blockBody);
+            
+            // Remove from our tracking Map
+            this.breakableBlocks.delete(key);
+
+            // Optional: Add particles or animation effect here
+            this.createBreakEffect(blockBody.position.x, blockBody.position.y);
+        }
+    }
+
+    createBreakEffect(x, y) {
+        // Create particle effect for block breaking
+        const particles = this.scene.add.particles(x, y, 'block-particle', {
+            speed: 100,
+            lifespan: 500,
+            scale: { start: 1, end: 0 },
+            quantity: 10,
+            blendMode: 'ADD'
+        });
+
+        // Stop emitting after a short duration
+        this.scene.time.delayedCall(100, () => {
+            particles.destroy();
+        });
     }
 
     createPickups() {
@@ -265,7 +383,7 @@ class Level {
             moveLeft: { x: 830, y: 655 },
             crouch: { x: 860, y: 590 },
             jump: { x: 50, y: 655 },
-            dash: { x: 860, y: 655 },
+            dash: { x: 50, y: 475 },
             doubleJump: { x: 860, y: 350 },
             wallJump: { x: 860, y: 270 }
         };
@@ -306,6 +424,7 @@ class Level {
                         this.scene.player.abilities[ability] = true;
                         this.pickups.get(ability).destroy();
                         this.pickups.delete(ability);
+           
                     }
                 }
             });
@@ -326,12 +445,14 @@ class Level {
         this.mainLayer = map.createLayer('Tile Layer 1', [gametileset, platformsTileset]);
         const laddersLayer = map.createLayer('ladders', [gametileset, platformsTileset]);
         this.crumblingLayer = map.createLayer('crumbling platforms', [gametileset, platformsTileset]);
-        const breakableLayer = map.createLayer('breakable blocks', [gametileset, platformsTileset]);
+        this.breakableLayer = map.createLayer('breakable blocks', [gametileset, platformsTileset]);
     
         this.mainLayer.setCollisionByProperty({ collision: true });
         this.crumblingLayer.setCollisionByProperty({ collision: true });
+        this.breakableLayer.setCollisionByProperty({ collision: true });
         
         this.setupCrumblingPlatforms();
+        this.setupBreakableBlocks();
         this.createCollisionBodies();
         this.createPickups();
 
@@ -340,7 +461,7 @@ class Level {
         // Create ladder bodies for collision detection
         const ladderTiles = laddersLayer.getTilesWithin();
         ladderTiles.forEach(tile => {
-            if (tile.index === 74) { // The ladder tile index from your tilemap
+            if (tile.index === 74) {
                 const ladderBody = this.scene.matter.add.rectangle(
                     tile.pixelX + TILE_SIZE/2,
                     tile.pixelY + TILE_SIZE/2,
@@ -348,11 +469,11 @@ class Level {
                     TILE_SIZE,
                     {
                         isStatic: true,
-                        isSensor: true, // Make it a sensor so it doesn't block movement
+                        isSensor: true,
                         label: 'ladder',
                         collisionFilter: {
-                            category: 0x0010, // New category for ladders
-                            mask: 0x0002 // Player category
+                            category: 0x0010,
+                            mask: 0x0002
                         }
                     }
                 );
@@ -368,58 +489,23 @@ class Level {
             this.createSpring(pos.x, pos.y);
         });
 
-        //add cannons
         const cannonPositions = [
             { x: 24, y: 648, facingLeft: false },
+            { x: 800, y: 105, facingLeft: true },
         ];
     
         cannonPositions.forEach(pos => {
             this.createCannon(pos.x, pos.y, pos.facingLeft);
         });
-
-
-        // Add some example cages and keys
-        const cagePositions = [
-            //{ x: 300, y: 648 },
-            // Add more cage positions as needed
-        ];
-
-        const keyPositions = [
-            //{ x: 200, y: 648 },
-            // Add more key positions as needed
-        ];
-
-        cagePositions.forEach(pos => {
-            this.createCage(pos.x, pos.y);
-        });
-
-        keyPositions.forEach(pos => {
-            this.createKey(pos.x, pos.y);
-        });
-
-        // Add collision handling for keys
-        this.scene.matter.world.on('collisionstart', (event) => {
-            event.pairs.forEach((pair) => {
-                const bodyA = pair.bodyA;
-                const bodyB = pair.bodyB;
-                
-                if (bodyA.label === 'player' || bodyB.label === 'player') {
-                    const key = bodyA.label === 'key' ? bodyA.gameObject : 
-                            bodyB.label === 'key' ? bodyB.gameObject : null;
-                    
-                    if (key) {
-                        this.handleKeyCollection(key);
-                    }
-                }
-            });
-        });
     
+        this.createStar(860, 100); // Adjust coordinates as needed
+
         // Setup camera
         this.scene.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
         this.scene.cameras.main.startFollow(this.scene.player.sprite, true, 0.2, 0.2);
         this.scene.cameras.main.setZoom(3.5);
     
-        // Move collision handling here
+        // Setup collision handling
         this.scene.matter.world.on('collisionstart', (event) => {
             event.pairs.forEach((pair) => {
                 const bodyA = pair.bodyA;
@@ -430,9 +516,25 @@ class Level {
                                  bodyB.label === 'spring' ? bodyB.gameObject : null;
                     const player = bodyA.label === 'player' ? bodyA.gameObject : 
                                  bodyB.label === 'player' ? bodyB.gameObject : null;
+                    const star = bodyA.label === 'star' ? bodyA.gameObject :
+                                 bodyB.label === 'star' ? bodyB.gameObject : null;
                     
                     if (spring && player) {
                         this.handleSpringCollision(player, spring);
+                    }
+
+                    if (star) {
+                        this.showWinScreen();
+                    }
+
+                    // Handle breakable block collisions when dashing
+                    if (this.scene.player.isDashing) {
+                        const blockBody = bodyA.label === 'breakable' ? bodyA :
+                                        bodyB.label === 'breakable' ? bodyB : null;
+                        
+                        if (blockBody) {
+                            this.breakBlock(blockBody);
+                        }
                     }
                 }
             });
